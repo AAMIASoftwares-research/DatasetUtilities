@@ -1,106 +1,115 @@
 import os, sys
+import numpy
 from sklearn.cluster import DBSCAN
-import utils
+import utils.utils as util
+
+CAT08_IM_folder = os.path.normpath(
+    "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset05\\"
+)
+
 
 if __name__ == "__main__":
-    print("test successful")
-    sys.exit()
-
-
-    # Load CAT08 centerlines into graph and visualise it
-    import os, matplotlib.pyplot as plt
-    
-    
-    CAT08_IM00_folder = os.path.normpath("C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset00\\")
-    v_list = []
-    for i_ in range(4):
-        v_file_path = os.path.join(CAT08_IM00_folder, f"vessel{i_}", "reference.txt")
-        v_list.append(numpy.loadtxt(v_file_path, delimiter=" ", usecols=range(4)))
-        
-    if 1:
-        ax1 = plt.subplot(121)
-        for i_ in range(4):
-            ax1.plot(range(v_list[i_].shape[0]), v_list[i_][:,0]+v_list[i_][:,1]+v_list[i_][:,2], label=str(i_))
-        ax1.set_xlabel("idx")
-        ax1.set_ylabel("x+y+z [mm]")
-        ax1.legend()
-        ax2 = plt.subplot(122)
-        for i_ in range(4):
-            ax2.plot(v_list[i_][:,0],v_list[i_][:,1], label=str(i_))
-        ax2.set_xlabel("x [mm]")
-        ax2.set_ylabel("y [mm]")
-        ax2.legend()
-        plt.show()
+    # load centelrines
+    centerlines_list = util.importCenterlineList(CAT08_IM_folder)
     if 0:
-        d = numpy.linalg.norm(v_list[-1][1:,:3]-v_list[-1][:-1,:3], axis = 1)
-        plt.scatter(numpy.zeros(len(d)), d)
-        plt.scatter(range(d.shape[0]),d)
-        plt.show()
+        util.plotCenterlineList(centerlines_list)
 
-    
-    
+    # divide left and right arterial tree
+    t1_list, t2_list = util.divideArterialTreesFromOriginalCenterlines(centerlines_list)
     if 0:
-        t = numpy.linspace(0,30,1000)
-        s = t#(1.5+numpy.cos(t))*t
-        plt.plot(t,s)
-        plt.show()
-        y = numpy.zeros((len(s),4))
-        for i_ in range(len(s)):
-            y[i_] = getContinuousCenterline(v_list[-1], s[i_])
-        plt.plot(y[:,0], y[:,1])
-        plt.scatter(y[:,0], y[:,1])
-        plt.show()
+        util.plotCenterlineList(t1_list)
+        util.plotCenterlineList(t2_list)
 
-    ## preprocess the centerlines: necessary because some of them have the ostium very
-    # different from one another in the common segments
-    # 1 - find the two arterial trees right away: we use just the first points of the centerlines
-    ostia = numpy.array([l[0,:3] for l in v_list])
-    min_distance_between_two_trees = 15 #mm
-    db = DBSCAN(eps=min_distance_between_two_trees, min_samples=1).fit(ostia)
-    tree1_list = [v_list[i] for i in numpy.argwhere(db.labels_==0).flatten()]
-    tree1_ostia = ostia[numpy.argwhere(db.labels_==0).flatten(),:]
-    tree2_list = [v_list[i] for i in numpy.argwhere(db.labels_==1).flatten()]
-    tree2_ostia = ostia[numpy.argwhere(db.labels_==1).flatten(),:]
-    # 2 - find the mean distance between all the ostia
-    mean_ostia = numpy.mean(ostia, axis=0)
-    # 3 - for each tree, find the centerline of which the first point is closer to the mean_ostia, then add the first point to every centerline
+    # get connection matrix
+    # the connection matrix N x N, with N the number of centerlines in the single arterial tree,
+    # stores the index of the ith (row) centerline for which, after that index, the centelrine is
+    # no more connected to the jth (column) centelrine.
+    # Should be symmetric if the analysed centerline are all from the same tree (same ostium), 
+    # but not symmetric if centerlines of different trees are used.
     # tree 1
-    if tree1_ostia.shape[0] > 1:
-        dist_ = numpy.linalg.norm(tree1_ostia - mean_ostia, axis=1)
-        idx = numpy.argmin(dist_)
-        p = tree1_list[idx][0]
-        for i in range(tree1_ostia.shape[0]):
-            if i != idx:
-                tree1_list[i] = numpy.insert(tree2_list[i], 0, p, axis=0)
+    t1_connection_matrix = numpy.zeros((len(t1_list), len(t1_list)), dtype="int") - 1
+    for i_v in range(len(t1_list)):
+        for j_v in range(len(t1_list)):
+            if i_v != j_v:
+                # work in i_v
+                t1_connection_matrix[i_v, j_v] = util.getCentelrinesFurthestConnectionIndex(
+                    c_i=t1_list[i_v],
+                    c_j=t1_list[j_v], 
+                    thresh_radius_multiplier=0.3
+                )
     # tree 2
-    if tree2_ostia.shape[0] > 1:
-        dist_ = numpy.linalg.norm(tree2_ostia - mean_ostia, axis=1)
-        idx = numpy.argmin(dist_)
-        p = tree2_list[idx][0]
-        for i in range(tree2_ostia.shape[0]):
-            if i != idx:
-                tree2_list[i] = numpy.insert(tree2_list[i], 0, p, axis=0)
-    # 4 - add everything back to v_list
-    v_list = []
-    for t in tree1_list:
-        v_list.append(t)
-    for t in tree2_list:
-        v_list.append(t)
-    
-    if 1:
-        ax1 = plt.subplot(121)
-        for i_ in range(4):
-            ax1.plot(range(v_list[i_].shape[0]), v_list[i_][:,0]+v_list[i_][:,1]+v_list[i_][:,2], label=str(i_))
-        ax1.set_xlabel("idx")
-        ax1.set_ylabel("x+y+z [mm]")
-        ax1.legend()
-        ax2 = plt.subplot(122)
-        for i_ in range(4):
-            ax2.plot(v_list[i_][:,0],v_list[i_][:,1], label=str(i_))
-        ax2.set_xlabel("x [mm]")
-        ax2.set_ylabel("y [mm]")
-        ax2.legend()
+    t2_connection_matrix = numpy.zeros((len(t2_list), len(t2_list)), dtype="int") - 1
+    for i_v in range(len(t2_list)):
+        for j_v in range(len(t2_list)):
+            if i_v != j_v:
+                # work in i_v
+                t2_connection_matrix[i_v, j_v] = util.getCentelrinesFurthestConnectionIndex(
+                    c_i=t2_list[i_v],
+                    c_j=t2_list[j_v], 
+                    thresh_radius_multiplier=0.3
+                )
+        
+    if 0:
+        print("debug plot")
+        import matplotlib.pyplot as plt
+        for i in range(len(t2_list)):
+            plt.scatter(t2_list[i][:,0], t2_list[i][:,1], s=20)
+        for i_v in range(len(t2_list)):
+            for j_v in range(len(t2_list)):
+                if t2_connection_matrix[i_v, j_v] != -1:
+                    idx = t2_connection_matrix[i_v, j_v]
+                    plt.scatter(
+                        t2_list[i_v][idx,0],
+                        t2_list[i_v][idx,1],
+                        s=10, c="red")
+                    plt.plot(
+                        [t2_list[i_v][t2_connection_matrix[i_v, j_v],0], t2_list[j_v][t2_connection_matrix[j_v, i_v],0]],
+                        [t2_list[i_v][t2_connection_matrix[i_v, j_v],1], t2_list[j_v][t2_connection_matrix[j_v, i_v],1]],
+                        color="red"
+                    )
+        plt.axis("equal")
         plt.show()
+
+    # mean for each centerline with the closest point on the connected centelrines
+
+    # tests on tree 2
+    points_list = []
+    for i_v in range(len(t2_list)):
+        for i_p in range(len(t2_list[i_v])):
+            if (t2_connection_matrix[i_v, :] != -1).any():
+                p_to_mean = [t2_list[i_v][i_p].tolist()]
+                for j_v in range(len(t2_list)):
+                    if t2_connection_matrix[i_v, j_v] != -1 and i_p < t2_connection_matrix[i_v, j_v]:
+                        idx_min, _ = util.getPointToCenterlinePointsMinDistance(
+                            p=t2_list[i_v][i_p],
+                            centerline=t2_list[j_v]
+                        )
+                        if idx_min < t2_connection_matrix[j_v, i_v]:
+                            p_to_mean.append(t2_list[j_v][idx_min].tolist())
+                p_mean = numpy.mean(p_to_mean, axis=0).tolist() if len(p_to_mean) > 1 else p_to_mean[0]
+            else:
+                p_mean = t2_list[i_v][i_p].tolist()
+            if not p_mean in points_list:
+                points_list.append(p_mean)
+    points_list = numpy.array(points_list)
+
+    if 1:
+        print("debug plot")
+        import matplotlib.pyplot as plt
+        for i in range(len(t2_list)):
+            plt.scatter(t2_list[i][:,0], t2_list[i][:,1], s=40, alpha=0.7)
+        plt.scatter(points_list[:,0], points_list[:,1], s=10)
+        plt.show()
+        
+
+
+
+
+
+
+    sys.exit()
+    # old method
+    
 
     # Now find the almost-mean-shift
     spacing=0.29
