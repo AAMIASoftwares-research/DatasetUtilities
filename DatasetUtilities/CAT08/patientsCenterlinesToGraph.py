@@ -11,7 +11,7 @@ CAT08_IM_folder = os.path.normpath(
 if __name__ == "__main__":
     # load centelrines
     centerlines_list = util.importCenterlineList(CAT08_IM_folder)
-    if 0:
+    if 1:
         util.plotCenterlineList(centerlines_list)
 
     # divide left and right arterial tree
