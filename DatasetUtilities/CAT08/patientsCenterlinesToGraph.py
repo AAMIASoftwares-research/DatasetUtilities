@@ -4,21 +4,173 @@ from sklearn.cluster import DBSCAN
 import utils.utils as util
 
 CAT08_IM_folder = os.path.normpath(
-    "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset05\\"
+    "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset01\\"
 )
 
+#
+# The next is a list of tuples (index, cathegory)
+# where index is the index up to which (exccluded) the vessel points belong to the cathegory,
+# which is incoded as a simple integer.
+# Later, points of different centelrines belonging to the same category will be processed
+# and a mean will be taken.
+# Also, a connection list is presented, which shows which cathegory connects into which other.
+# A self loop means no connections, es (0,0) means that segment 0 is not connected to anything.
+# IM00
+cat08_00_00_indices_cathegories = [
+    (0, 7354, 0)
+]
+cat08_00_01_indices_cathegories = [
+    (0, 661, 1),
+    (611, 976, 2),
+    (976, 3277, 5)
+]
+cat08_00_02_indices_cathegories = [
+    (0, 665, 1),
+    (665, 4114, 3)
+]
+cat08_00_03_indices_cathegories = [
+    (0, 660, 1),
+    (660, 981, 2),
+    (981, 2352, 4)
+]
+cat08_00_indices_cathegories = [cat08_00_00_indices_cathegories, cat08_00_01_indices_cathegories, cat08_00_02_indices_cathegories, cat08_00_03_indices_cathegories]
+cat08_00_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM01
+cat08_01_00_indices_cathegories = [
+    (0, 7450, 0)
+]
+cat08_01_01_indices_cathegories = [
+    (0, 741, 1),
+    (741, 2061, 2),
+    (2061, 5821, 5)
+]
+cat08_01_02_indices_cathegories = [
+    (0, 665, 1),
+    (665, 3501, 3)
+]
+cat08_01_03_indices_cathegories = [
+    (0, 620, 1),
+    (620, 1951, 2),
+    (1951, 3624, 4)
+]
+cat08_01_indices_cathegories = [cat08_01_00_indices_cathegories, cat08_01_01_indices_cathegories, cat08_01_02_indices_cathegories, cat08_01_03_indices_cathegories]
+cat08_01_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+
+# attach everything together to gather these info programmatically and automatically
+cat08_ic_list = [cat08_00_indices_cathegories, cat08_01_indices_cathegories]
+cat08_conn_list = [cat08_00_connections, cat08_01_connections]
 
 if __name__ == "__main__":
     # load centelrines
     centerlines_list = util.importCenterlineList(CAT08_IM_folder)
-    if 1:
+    if 0:
         util.plotCenterlineList(centerlines_list)
+    if 1:
+        n_cat08_img = int(os.path.split(CAT08_IM_folder)[1][-2:])
+        centerlines_ic_list = cat08_ic_list[n_cat08_img]
+        centelrines_cat_conn = cat08_conn_list[n_cat08_img]
+    else:
+        # This visualisation tool is used to get the indices, for each centerline, of the
+        # common segments manually, since doing it automatically is requiring too much development time
+        # and is not worth it.
+        # the results are saved, for each centerline, on top of the main section of this script
+        util.plotCenterlineListWithIndexes(centerlines_list)
+        sys.exit(0)
 
     # divide left and right arterial tree
-    t1_list, t2_list = util.divideArterialTreesFromOriginalCenterlines(centerlines_list)
+    t1_i, t1_list, t2_i, t2_list = util.divideArterialTreesFromOriginalCenterlines(centerlines_list)
+    t1_ic_list = [centerlines_ic_list[i] for i in t1_i]
+    t2_ic_list = [centerlines_ic_list[i] for i in t2_i]
     if 0:
         util.plotCenterlineList(t1_list)
         util.plotCenterlineList(t2_list)
+    
+    # Now you have, for each tree, a series of indices and cathegories telling you
+    # what segments in each centelrine should be united with other centerlines, and with which ones.
+    if len(t1_ic_list) < 2:
+        # centerline is alone -> do nothing
+        pass
+
+    if len(t2_ic_list) < 2:
+        # centerline is alone -> do nothing
+        pass
+    else:
+        # More than one centelrine: create mean segments
+        # of which the points are ordered from closer to ostium (in terms of arc length)
+        # to furthest.
+        # Associate each point list (mean segment) to its segment cathegory index (an int)
+        import matplotlib.pyplot as plt ###----------------------------------------------------------------------
+        categories = []
+        for a in t2_ic_list:
+            for b in a:
+                categories.append(b[2])
+        categories = set(categories)
+        final_segments_tuples_list = []
+        for c in categories:
+            # get start and end indices
+            list_of_centerline_segments = []
+            for i_c, cent in enumerate(t2_list):
+                for iiii, ic_tuple in enumerate(t2_ic_list[i_c]):
+                    if ic_tuple[2] == c:
+                        start_index = ic_tuple[0] if iiii == 0 else ic_tuple[0] + 10 # to avoid overlaps at junctions and smooth them out
+                        segment = cent[start_index:ic_tuple[1]:]
+                        list_of_centerline_segments.append(segment)
+                        break
+            # Now, the mean shift on paths algorithm should be applied
+            # However, it is quite complicated and is not deemed necessary in this case
+            # idea: two segments are generated: one starting from the front of the segments, the other
+            # starting from the back. then, these two are again meaned with each other
+            if len(list_of_centerline_segments) < 1:
+                raise RuntimeError("list_of_centerline_segments should always have at least one member, instead it is empty.")
+            elif len(list_of_centerline_segments) == 1:
+                final_segments_tuples_list.append((list_of_centerline_segments[0],c))
+            else:
+                # get longer segment, and use that segment indicisation to compute the mean path
+                len_longest_segment = 0
+                i_longest_segment = -1
+                for i_seg, segment in enumerate(list_of_centerline_segments):
+                    if segment.shape[0] > len_longest_segment:
+                        len_longest_segment = segment.shape[0]
+                        i_longest_segment = i_seg
+                # now, apply the mean for each point of the longest segment with the closest points of the other segments
+                final_segment = list_of_centerline_segments[i_longest_segment].copy()
+                for i_p_fs in range(len_longest_segment):
+                    points_to_mean_list = []
+                    for j in range(len(list_of_centerline_segments)):
+                        if j != i_longest_segment:
+                            idxx, _ = util.getPointToCenterlinePointsMinDistance(
+                                final_segment[i_p_fs],
+                                list_of_centerline_segments[j]
+                            )
+                            points_to_mean_list.append(list_of_centerline_segments[j][idxx])
+                        else:
+                            points_to_mean_list.append(final_segment[i_p_fs])
+                    final_segment[i_p_fs,:] = numpy.mean(points_to_mean_list, axis=0)
+                # now, the final segment is ready, just sample it once every 0.3 mm of arc length
+                #          use getCenterlinePointFromArcLength()
+                # save it
+                final_segments_tuples_list.append((final_segment,c))
+            for ccc in list_of_centerline_segments:
+                plt.plot(ccc[:,0], ccc[:,1], ".-")
+            plt.plot(final_segments_tuples_list[-1][0][:,0], final_segments_tuples_list[-1][0][:,1], ".-", color="black")
+            plt.show()####################################################
+
+        # Now, just stitch the segments together following the connection lists in a graph,
+        # and there you go, you should be done
+        for ccc in final_segments_tuples_list:
+            plt.plot(ccc[0][:,0], ccc[0][:,1], ".-")
+        plt.show()
+
+
+            
+                
+                
+        
+
+    sys.exit()
+    # less old method
+    # Worked almost fine, but messy at intersections and points were not ordered from ostium onward.
+
 
     # get connection matrix
     # the connection matrix N x N, with N the number of centerlines in the single arterial tree,
@@ -71,6 +223,49 @@ if __name__ == "__main__":
         plt.show()
 
     # mean for each centerline with the closest point on the connected centelrines
+    print("Connection Matrix:\n", t2_connection_matrix)
+
+    """ Usa le distanze e classifica usando un int
+
+    """
+    t2_class_list = []
+    for i_v, v_i in enumerate(t2_list):
+        point_class_list = [0 for i in range(v_i.shape[0])]
+        for i_p, p in enumerate(v_i):
+            if i_p < min(t2_connection_matrix[i_v,t2_connection_matrix[i_v,:]>-1]):
+                # first junction not reached yet
+                point_class_list[i_p] = sum([(c+1)+10**c for c in range(len(t2_list))])
+            else:
+                # the first junction ever has been reached -> infer the class with the connection matrix
+                point_class_list[i_p] = sum([(c+1)*(10**c) for c in range(len(t2_list)) if (i_p < t2_connection_matrix[i_v,c] and i_p != c)])
+                ## the line above is wrong, sistemala
+        t2_class_list.append(point_class_list)
+
+      
+    if 1:
+        print("debug plot")
+        #print(t2_class_list)
+        import matplotlib.pyplot as plt
+        classes_extended = []
+        points_extended = []
+        for i in range(len(t2_list)):
+            points_extended.extend(t2_list[i])
+            classes_extended.extend(t2_class_list[i])
+        points_extended = numpy.array(points_extended)
+        classes_extended = numpy.array(classes_extended)
+        plt.scatter(points_extended[:,0], points_extended[:,1], s=40, alpha=0.7, c=classes_extended)
+        plt.axis("equal")
+        plt.legend()
+        plt.colorbar()
+        plt.show()
+        plt.plot(classes_extended, ".")
+        cx = 0
+        for v in t2_class_list:
+            plt.vlines(len(v)+cx, ymin=-5, ymax=300, color="red")
+            cx += len(v)
+        plt.show()
+
+    
 
     # tests on tree 2
     points_list = []
@@ -99,6 +294,7 @@ if __name__ == "__main__":
         for i in range(len(t2_list)):
             plt.scatter(t2_list[i][:,0], t2_list[i][:,1], s=40, alpha=0.7)
         plt.scatter(points_list[:,0], points_list[:,1], s=10)
+        plt.axis("equal")
         plt.show()
         
 

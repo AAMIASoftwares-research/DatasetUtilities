@@ -10,36 +10,6 @@ def importCenterlineList(cat08_im_folder_path:str):
         v_list.append(numpy.loadtxt(v_file_path, delimiter=" ", usecols=range(4)))
     return v_list
 
-def plotCenterlineList(centerlines_list: list):
-    ax1 = plt.subplot(221)
-    n = len(centerlines_list)
-    for i_ in range(n):
-        ax1.plot(centerlines_list[i_][:,0],centerlines_list[i_][:,1],
-                 ".-", label=str(i_))
-    ax1.set_xlabel("x [mm]")
-    ax1.set_ylabel("y [mm]")
-    ax1.legend()
-    #
-    ax2 = plt.subplot(222, projection="3d")
-    for i_ in range(n):
-        ax2.plot(centerlines_list[i_][:,0],centerlines_list[i_][:,1], centerlines_list[i_][:,2],
-                 color="black", linewidth=0.7)
-        ax2.scatter(centerlines_list[i_][:,0],centerlines_list[i_][:,1], centerlines_list[i_][:,2],
-                 s=centerlines_list[i_][:,3]**2, label=str(i_))
-    ax2.set_xlabel("x [mm]")
-    ax2.set_ylabel("y [mm]")
-    ax2.set_zlabel("z [mm]")
-    ax2.legend()
-    #
-    ax3 = plt.subplot(212)
-    for i_ in range(n):
-        d = numpy.linalg.norm(centerlines_list[i_][0,:3] - centerlines_list[i_][:,:3], axis=1)
-        ax3.plot(range(d.shape[0]), d, label=str(i_))
-    ax3.set_xlabel("idx")
-    ax3.set_ylabel("distance from first point")
-    ax3.legend()
-    plt.show()
-
 
 def getCentelrineArcLength(centerline: numpy.ndarray, startIdx: int|None = None, endIdx: int|None = None) -> float:
         """ Function to get the length of a centerline, defined as a 3D point sequence
@@ -87,37 +57,13 @@ def divideArterialTreesFromOriginalCenterlines(centerlines_list: list) -> tuple:
     ostia = numpy.array([l[0,:3] for l in centerlines_list])
     min_distance_between_two_trees = 20 #mm
     db = DBSCAN(eps=min_distance_between_two_trees, min_samples=1).fit(ostia)
-    tree1_list = [centerlines_list[i] for i in numpy.argwhere(db.labels_==0).flatten()]
-    tree1_ostia = ostia[numpy.argwhere(db.labels_==0).flatten(),:]
-    tree2_list = [centerlines_list[i] for i in numpy.argwhere(db.labels_==1).flatten()]
-    tree2_ostia = ostia[numpy.argwhere(db.labels_==1).flatten(),:]
-    return (tree1_list, tree2_list)
-    #
-    # 2 - find the mean distance between all the ostia
-    mean_ostia = numpy.mean(ostia, axis=0)
-    # 3 - for each tree, find the centerline of which the first point is closer to the mean_ostia, then add the first point to every centerline
-    # tree 1
-    if tree1_ostia.shape[0] > 1:
-        dist_ = numpy.linalg.norm(tree1_ostia - mean_ostia, axis=1)
-        idx = numpy.argmin(dist_)
-        p = tree1_list[idx][0]
-        for i in range(tree1_ostia.shape[0]):
-            if i != idx:
-                tree1_list[i] = numpy.insert(tree2_list[i], 0, p, axis=0)
-    # tree 2
-    if tree2_ostia.shape[0] > 1:
-        dist_ = numpy.linalg.norm(tree2_ostia - mean_ostia, axis=1)
-        idx = numpy.argmin(dist_)
-        p = tree2_list[idx][0]
-        for i in range(tree2_ostia.shape[0]):
-            if i != idx:
-                tree2_list[i] = numpy.insert(tree2_list[i], 0, p, axis=0)
-    # 4 - add everything back to v_list
-    v_list = []
-    for t in tree1_list:
-        v_list.append(t)
-    for t in tree2_list:
-        v_list.append(t)
+    tree1_idxs = numpy.argwhere(db.labels_==0).flatten()
+    tree1_list = [centerlines_list[i] for i in tree1_idxs]
+    tree1_ostia = ostia[tree1_idxs,:]
+    tree2_idxs = numpy.argwhere(db.labels_==1).flatten()
+    tree2_list = [centerlines_list[i] for i in tree2_idxs]
+    tree2_ostia = ostia[tree2_idxs,:]
+    return (tree1_idxs, tree1_list, tree2_idxs, tree2_list)
 
 
 
@@ -158,3 +104,73 @@ def getCentelrinesFurthestConnectionIndex(c_i: numpy.ndarray, c_j: numpy.ndarray
                 d_last = dmin
                 conn_index = i_
     return conn_index
+
+
+
+###############
+# VISUALISATION 
+###############
+
+colors=["red", "blue", "orange", "green", "black", "pink", "yellow"]
+
+def plotCenterlineList(centerlines_list: list):
+    ax1 = plt.subplot(221)
+    n = len(centerlines_list)
+    for i_ in range(n):
+        ax1.plot(centerlines_list[i_][:,0],centerlines_list[i_][:,1],
+                 ".-", label=str(i_), color=colors[i_])
+    ax1.set_xlabel("x [mm]")
+    ax1.set_ylabel("y [mm]")
+    ax1.legend()
+    #
+    ax2 = plt.subplot(222, projection="3d")
+    for i_ in range(n):
+        ax2.plot(centerlines_list[i_][:,0],centerlines_list[i_][:,1], centerlines_list[i_][:,2],
+                 color="black", linewidth=0.7)
+        ax2.scatter(centerlines_list[i_][:,0],centerlines_list[i_][:,1], centerlines_list[i_][:,2],
+                 s=centerlines_list[i_][:,3]**2, label=str(i_), c=colors[i_])
+    ax2.set_xlabel("x [mm]")
+    ax2.set_ylabel("y [mm]")
+    ax2.set_zlabel("z [mm]")
+    ax2.legend()
+    #
+    ax3 = plt.subplot(212)
+    for i_ in range(n):
+        d = numpy.linalg.norm(centerlines_list[i_][0,:3] - centerlines_list[i_][:,:3], axis=1)
+        ax3.plot(range(d.shape[0]), d, label=str(i_))
+    ax3.set_xlabel("idx")
+    ax3.set_ylabel("distance from first point")
+    ax3.legend()
+    plt.show()
+
+def plotCenterlineListWithIndexes(centerlines_list: list):
+    n = len(centerlines_list)
+    # x, y
+    ax1 = plt.subplot(121)
+    for i_ in range(n):
+        ax1.plot(centerlines_list[i_][:,0], centerlines_list[i_][:,1], ".-", label=str(i_)+f" : n_points={centerlines_list[i_].shape[0]}", color=colors[i_], alpha=0.4)
+        for i_p in range(0, centerlines_list[i_].shape[0], 10):
+            ax1.text(centerlines_list[i_][i_p,0], centerlines_list[i_][i_p,1], str(i_p), color=colors[i_])
+        ax1.text(centerlines_list[i_][-1,0], centerlines_list[i_][-1,1], str(centerlines_list[i_].shape[0]-1), color=colors[i_])
+    ax1.set_xlabel("x [mm]")
+    ax1.set_ylabel("y [mm]")
+    ax1.legend()
+    ax1.axis("equal")
+    # x, z
+    ax2 = plt.subplot(222)
+    for i_ in range(n):
+        ax2.plot(centerlines_list[i_][:,0], centerlines_list[i_][:,2], ".-", label=str(i_), color=colors[i_])
+        for i_p in range(0, centerlines_list[i_].shape[0], 20):
+            ax2.text(centerlines_list[i_][i_p,0], centerlines_list[i_][i_p,2], str(i_p), color=colors[i_])
+    ax2.set_xlabel("x [mm]")
+    ax2.set_ylabel("z [mm]")
+    ax2.axis("equal")
+    # y, z
+    ax3 = plt.subplot(224)
+    for i_ in range(n):
+        ax3.plot(centerlines_list[i_][:,1], centerlines_list[i_][:,2], ".-", label=str(i_), color=colors[i_])
+    ax3.set_xlabel("y [mm]")
+    ax3.set_ylabel("z [mm]")
+    ax3.axis("equal")
+    # out
+    plt.show()
