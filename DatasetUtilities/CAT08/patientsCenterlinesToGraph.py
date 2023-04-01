@@ -1,19 +1,33 @@
 import os, sys
 import numpy
+import matplotlib.pyplot as plt ###----------------------------------------------------------------------
 from sklearn.cluster import DBSCAN
 import utils.utils as util
 
+"""How does this script work
+This script works in two modes, decided by setting the flag "OPTION_EXPLORE_CENTERLINE".
+OPTION_EXPLORE_CENTERLINE = True:
+    The program is used to explore the centelrines point by point.
+    This is necessary to create segments: a segment is a section of centerlines where the
+    centerline either runs alone or it runs with other centerlines side by side, from start to intersection
+    or from intersection to intersection.
+OPTION_EXPLORE_CENTERLINE = False:
+    Given the segments info obtained in the previous step, and saved in the format explained below,
+    the centerline graph is created and saved using the CATNetwork (https://github.com/AAMIASoftwares-research/HCATNetwork) + NetworkX packages.
+"""
+OPTION_EXPLORE_CENTERLINE = False
+
+IM_NUMBER = int(3) # accepted 0 to 7
 CAT08_IM_folder = os.path.normpath(
-    "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset01\\"
+    f"C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset{IM_NUMBER:02d}\\"
 )
 
-#
-# The next is a list of tuples (index, cathegory)
-# where index is the index up to which (exccluded) the vessel points belong to the cathegory,
-# which is incoded as a simple integer.
-# Later, points of different centelrines belonging to the same category will be processed
+# The next is a list of tuples (start_index, end_index, category)
+# where end_index is the index up to which (excluded) the vessel points belong to the category,
+# which is encoded as a simple integer.
+# Later, points of different centerlines belonging to the same category will be processed
 # and a mean will be taken.
-# Also, a connection list is presented, which shows which cathegory connects into which other.
+# Also, a connection list is presented, which shows which category connects into which other.
 # A self loop means no connections, es (0,0) means that segment 0 is not connected to anything.
 # IM00
 cat08_00_00_indices_cathegories = [
@@ -55,17 +69,69 @@ cat08_01_03_indices_cathegories = [
 ]
 cat08_01_indices_cathegories = [cat08_01_00_indices_cathegories, cat08_01_01_indices_cathegories, cat08_01_02_indices_cathegories, cat08_01_03_indices_cathegories]
 cat08_01_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM02
+cat08_02_00_indices_cathegories = [
+    (0, 5381, 0)
+]
+cat08_02_01_indices_cathegories = [
+    (0, 511, 1),
+    (511, 761, 2),
+    (761, 4812, 5)
+]
+cat08_02_02_indices_cathegories = [
+    (0, 501, 1),
+    (501, 3331, 3)
+]
+cat08_02_03_indices_cathegories = [
+    (0, 551, 1),
+    (551, 801, 2),
+    (801, 2336, 4)
+]
+cat08_02_indices_cathegories = [cat08_02_00_indices_cathegories, cat08_02_01_indices_cathegories, cat08_02_02_indices_cathegories, cat08_02_03_indices_cathegories]
+cat08_02_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM03
+cat08_03_00_indices_cathegories = [
+    (0, 6791, 0)
+]
+cat08_03_01_indices_cathegories = [
+    (0, 516, 1),
+    (516, 1301, 2),
+    (1301, 5290, 5)
+]
+cat08_03_02_indices_cathegories = [
+    (0, 481, 1),
+    (481, 4350, 3)
+]
+cat08_03_03_indices_cathegories = [
+    (0, 507, 1),
+    (507, 1285, 2),
+    (1285, 3013, 4)
+]
+cat08_03_indices_cathegories = [cat08_03_00_indices_cathegories, cat08_03_01_indices_cathegories, cat08_03_02_indices_cathegories, cat08_03_03_indices_cathegories]
+cat08_03_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
 
 # attach everything together to gather these info programmatically and automatically
-cat08_ic_list = [cat08_00_indices_cathegories, cat08_01_indices_cathegories]
-cat08_conn_list = [cat08_00_connections, cat08_01_connections]
+cat08_ic_list = [
+    cat08_00_indices_cathegories,
+    cat08_01_indices_cathegories,
+    cat08_02_indices_cathegories,
+    cat08_03_indices_cathegories
+]
+cat08_conn_list = [
+    cat08_00_connections,
+    cat08_01_connections,
+    cat08_02_connections,
+    cat08_03_connections
+]
+
+
 
 if __name__ == "__main__":
     # load centelrines
     centerlines_list = util.importCenterlineList(CAT08_IM_folder)
     if 0:
         util.plotCenterlineList(centerlines_list)
-    if 1:
+    if not OPTION_EXPLORE_CENTERLINE:
         n_cat08_img = int(os.path.split(CAT08_IM_folder)[1][-2:])
         centerlines_ic_list = cat08_ic_list[n_cat08_img]
         centelrines_cat_conn = cat08_conn_list[n_cat08_img]
@@ -87,30 +153,26 @@ if __name__ == "__main__":
     
     # Now you have, for each tree, a series of indices and cathegories telling you
     # what segments in each centelrine should be united with other centerlines, and with which ones.
+    # t1
     if len(t1_ic_list) < 2:
-        # centerline is alone -> do nothing
-        pass
-
-    if len(t2_ic_list) < 2:
-        # centerline is alone -> do nothing
-        pass
+        # centerline is alone
+        t1_final_segments_tuples_list = [(t1_list[0],t1_ic_list[0][0][2])]
     else:
         # More than one centelrine: create mean segments
         # of which the points are ordered from closer to ostium (in terms of arc length)
         # to furthest.
         # Associate each point list (mean segment) to its segment cathegory index (an int)
-        import matplotlib.pyplot as plt ###----------------------------------------------------------------------
         categories = []
-        for a in t2_ic_list:
+        for a in t1_ic_list:
             for b in a:
                 categories.append(b[2])
         categories = set(categories)
-        final_segments_tuples_list = []
+        t1_final_segments_tuples_list = []
         for c in categories:
             # get start and end indices
             list_of_centerline_segments = []
-            for i_c, cent in enumerate(t2_list):
-                for iiii, ic_tuple in enumerate(t2_ic_list[i_c]):
+            for i_c, cent in enumerate(t1_list):
+                for iiii, ic_tuple in enumerate(t1_ic_list[i_c]):
                     if ic_tuple[2] == c:
                         start_index = ic_tuple[0] if iiii == 0 else ic_tuple[0] + 10 # to avoid overlaps at junctions and smooth them out
                         segment = cent[start_index:ic_tuple[1]:]
@@ -118,12 +180,17 @@ if __name__ == "__main__":
                         break
             # Now, the mean shift on paths algorithm should be applied
             # However, it is quite complicated and is not deemed necessary in this case
-            # idea: two segments are generated: one starting from the front of the segments, the other
-            # starting from the back. then, these two are again meaned with each other
+            # Solution:
+            # The longest path (the segment with the most points) is selected and duplicated.
+            # For each datapoint of this segment, its position and radius is averaged with the
+            # closest point of each of the other segments.
+            # Moreover, to have clean junctions, if the segments are not the ones containing the ostium,
+            # all segments' first N points (10<N<20, ~ 3 mm) are discarded to allow a cleaner connection
+            # The last step is to smooth it out a little and to sample the obtained curved once every 3 mm
             if len(list_of_centerline_segments) < 1:
                 raise RuntimeError("list_of_centerline_segments should always have at least one member, instead it is empty.")
             elif len(list_of_centerline_segments) == 1:
-                final_segments_tuples_list.append((list_of_centerline_segments[0],c))
+                t1_final_segments_tuples_list.append((list_of_centerline_segments[0],c))
             else:
                 # get longer segment, and use that segment indicisation to compute the mean path
                 len_longest_segment = 0
@@ -146,20 +213,115 @@ if __name__ == "__main__":
                         else:
                             points_to_mean_list.append(final_segment[i_p_fs])
                     final_segment[i_p_fs,:] = numpy.mean(points_to_mean_list, axis=0)
+                # smooth it out
+                for i_xyzr in range(final_segment.shape[1]):
+                    fsa = numpy.insert(final_segment[:,i_xyzr], 0, final_segment[0,i_xyzr])
+                    fsa = numpy.append(fsa, fsa[-1])
+                    final_segment[:,i_xyzr] = numpy.convolve(fsa, [1/3, 1/3, 1/3])[2:-2]
                 # now, the final segment is ready, just sample it once every 0.3 mm of arc length
                 #          use getCenterlinePointFromArcLength()
+                total_len = util.getCentelrineArcLength(final_segment)
+                accumulated_len = 0.0
+                arc_len_list = []
+                while accumulated_len <= total_len:
+                    arc_len_list.append(accumulated_len)
+                    accumulated_len += 0.3
+                resampled_final_segment = numpy.zeros((len(arc_len_list), final_segment.shape[1]))
+                for i in range(len(arc_len_list)):
+                    resampled_final_segment[i,:] = util.getCenterlinePointFromArcLength(final_segment, arc_len_list[i])
                 # save it
-                final_segments_tuples_list.append((final_segment,c))
-            for ccc in list_of_centerline_segments:
-                plt.plot(ccc[:,0], ccc[:,1], ".-")
-            plt.plot(final_segments_tuples_list[-1][0][:,0], final_segments_tuples_list[-1][0][:,1], ".-", color="black")
-            plt.show()####################################################
+                t1_final_segments_tuples_list.append((final_segment,c))
+    # t2
+    if len(t2_ic_list) < 2:
+        # centerline is alone
+        t2_final_segments_tuples_list = [(t2_list[0],t2_ic_list[0][0][2])]
+    else:
+        # More than one centelrine: create mean segments
+        # of which the points are ordered from closer to ostium (in terms of arc length)
+        # to furthest.
+        # Associate each point list (mean segment) to its segment cathegory index (an int)
+        categories = []
+        for a in t2_ic_list:
+            for b in a:
+                categories.append(b[2])
+        categories = set(categories)
+        t2_final_segments_tuples_list = []
+        for c in categories:
+            # get start and end indices
+            list_of_centerline_segments = []
+            for i_c, cent in enumerate(t2_list):
+                for iiii, ic_tuple in enumerate(t2_ic_list[i_c]):
+                    if ic_tuple[2] == c:
+                        start_index = ic_tuple[0] if iiii == 0 else ic_tuple[0] + 10 # to avoid overlaps at junctions and smooth them out
+                        segment = cent[start_index:ic_tuple[1]:]
+                        list_of_centerline_segments.append(segment)
+                        break
+            # Now, the mean shift on paths algorithm should be applied
+            # However, it is quite complicated and is not deemed necessary in this case
+            # Solution:
+            # The longest path (the segment with the most points) is selected and duplicated.
+            # For each datapoint of this segment, its position and radius is averaged with the
+            # closest point of each of the other segments.
+            # Moreover, to have clean junctions, if the segments are not the ones containing the ostium,
+            # all segments' first N points (10<N<20, ~ 3 mm) are discarded to allow a cleaner connection
+            # The last step is to smooth it out a little and to sample the obtained curved once every 3 mm
+            if len(list_of_centerline_segments) < 1:
+                raise RuntimeError("list_of_centerline_segments should always have at least one member, instead it is empty.")
+            elif len(list_of_centerline_segments) == 1:
+                t2_final_segments_tuples_list.append((list_of_centerline_segments[0],c))
+            else:
+                # get longer segment, and use that segment indicisation to compute the mean path
+                len_longest_segment = 0
+                i_longest_segment = -1
+                for i_seg, segment in enumerate(list_of_centerline_segments):
+                    if segment.shape[0] > len_longest_segment:
+                        len_longest_segment = segment.shape[0]
+                        i_longest_segment = i_seg
+                # now, apply the mean for each point of the longest segment with the closest points of the other segments
+                final_segment = list_of_centerline_segments[i_longest_segment].copy()
+                for i_p_fs in range(len_longest_segment):
+                    points_to_mean_list = []
+                    for j in range(len(list_of_centerline_segments)):
+                        if j != i_longest_segment:
+                            idxx, _ = util.getPointToCenterlinePointsMinDistance(
+                                final_segment[i_p_fs],
+                                list_of_centerline_segments[j]
+                            )
+                            points_to_mean_list.append(list_of_centerline_segments[j][idxx])
+                        else:
+                            points_to_mean_list.append(final_segment[i_p_fs])
+                    final_segment[i_p_fs,:] = numpy.mean(points_to_mean_list, axis=0)
+                # smooth it out
+                for i_xyzr in range(final_segment.shape[1]):
+                    fsa = numpy.insert(final_segment[:,i_xyzr], 0, final_segment[0,i_xyzr])
+                    fsa = numpy.append(fsa, fsa[-1])
+                    final_segment[:,i_xyzr] = numpy.convolve(fsa, [1/3, 1/3, 1/3])[2:-2]
+                # now, the final segment is ready, just sample it once every 0.3 mm of arc length
+                #          use getCenterlinePointFromArcLength()
+                total_len = util.getCentelrineArcLength(final_segment)
+                accumulated_len = 0.0
+                arc_len_list = []
+                while accumulated_len <= total_len:
+                    arc_len_list.append(accumulated_len)
+                    accumulated_len += 0.3
+                resampled_final_segment = numpy.zeros((len(arc_len_list), final_segment.shape[1]))
+                for i in range(len(arc_len_list)):
+                    resampled_final_segment[i,:] = util.getCenterlinePointFromArcLength(final_segment, arc_len_list[i])
+                # save it
+                t2_final_segments_tuples_list.append((final_segment,c))
 
-        # Now, just stitch the segments together following the connection lists in a graph,
-        # and there you go, you should be done
-        for ccc in final_segments_tuples_list:
-            plt.plot(ccc[0][:,0], ccc[0][:,1], ".-")
-        plt.show()
+    # Now, just stitch the segments together following the connection lists in a graph,
+    # and there you go, you should be done
+
+    print("Debug plot...")
+    ax = plt.subplot(111, projection="3d")
+    for ccc in t1_final_segments_tuples_list:
+        ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
+    plt.show()
+    ax = plt.subplot(111, projection="3d")
+    for ccc in t2_final_segments_tuples_list:
+        ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
+    plt.show()
 
 
             
@@ -167,7 +329,29 @@ if __name__ == "__main__":
                 
         
 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     sys.exit()
+    
+    #######################
+    #### LEGACY STUFF #####
+    #######################
+
+    # The following stuff all proved to be almost working, but not completely working
+    # These are kept because, in any case, they might contain some useful stuff for the future
+
     # less old method
     # Worked almost fine, but messy at intersections and points were not ordered from ostium onward.
 

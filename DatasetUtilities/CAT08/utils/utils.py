@@ -174,3 +174,18 @@ def plotCenterlineListWithIndexes(centerlines_list: list):
     ax3.axis("equal")
     # out
     plt.show()
+    del ax1, ax2, ax3
+    # 3d
+    ax0 = plt.subplot(111, projection="3d")
+    for i_ in range(n):
+        ax0.plot(centerlines_list[i_][:,0], centerlines_list[i_][:,1], centerlines_list[i_][:,2], ".-", label=str(i_)+f" : n_points={centerlines_list[i_].shape[0]}", color=colors[i_], alpha=0.4)
+        for i_p in range(0, centerlines_list[i_].shape[0], 10):
+            ax0.text(centerlines_list[i_][i_p,0], centerlines_list[i_][i_p,1], centerlines_list[i_][i_p,2], str(i_p), color=colors[i_])
+        ax0.text(centerlines_list[i_][-1,0], centerlines_list[i_][-1,1], centerlines_list[i_][-1,2],str(centerlines_list[i_].shape[0]-1), color=colors[i_])
+    ax0.set_xlabel("x [mm]")
+    ax0.set_ylabel("y [mm]")
+    ax0.set_zlabel("z [mm]")
+    ax0.legend()
+    ax0.axis("equal")
+    # out
+    plt.show()
