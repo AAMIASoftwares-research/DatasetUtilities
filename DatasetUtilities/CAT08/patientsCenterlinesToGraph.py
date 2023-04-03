@@ -1,6 +1,6 @@
 import os, sys
 import numpy
-import matplotlib.pyplot as plt ###----------------------------------------------------------------------
+import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 import utils.utils as util
 
@@ -15,9 +15,10 @@ OPTION_EXPLORE_CENTERLINE = False:
     Given the segments info obtained in the previous step, and saved in the format explained below,
     the centerline graph is created and saved using the CATNetwork (https://github.com/AAMIASoftwares-research/HCATNetwork) + NetworkX packages.
 """
-OPTION_EXPLORE_CENTERLINE = False
+OPTION_EXPLORE_CENTERLINE = 0
 
-IM_NUMBER = int(3) # accepted 0 to 7
+IM_NUMBER = int(0) # accepted 0 to 7
+
 CAT08_IM_folder = os.path.normpath(
     f"C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset{IM_NUMBER:02d}\\"
 )
@@ -34,17 +35,17 @@ cat08_00_00_indices_cathegories = [
     (0, 7354, 0)
 ]
 cat08_00_01_indices_cathegories = [
-    (0, 661, 1),
-    (611, 976, 2),
+    (0, 651, 1),
+    (651, 976, 2),
     (976, 3277, 5)
 ]
 cat08_00_02_indices_cathegories = [
-    (0, 665, 1),
-    (665, 4114, 3)
+    (0, 655, 1),
+    (655, 4114, 3)
 ]
 cat08_00_03_indices_cathegories = [
-    (0, 660, 1),
-    (660, 981, 2),
+    (0, 650, 1),
+    (650, 981, 2),
     (981, 2352, 4)
 ]
 cat08_00_indices_cathegories = [cat08_00_00_indices_cathegories, cat08_00_01_indices_cathegories, cat08_00_02_indices_cathegories, cat08_00_03_indices_cathegories]
@@ -55,8 +56,8 @@ cat08_01_00_indices_cathegories = [
 ]
 cat08_01_01_indices_cathegories = [
     (0, 741, 1),
-    (741, 2061, 2),
-    (2061, 5821, 5)
+    (741, 2057, 2),
+    (2057, 5821, 5)
 ]
 cat08_01_02_indices_cathegories = [
     (0, 665, 1),
@@ -75,8 +76,8 @@ cat08_02_00_indices_cathegories = [
 ]
 cat08_02_01_indices_cathegories = [
     (0, 511, 1),
-    (511, 761, 2),
-    (761, 4812, 5)
+    (511, 755, 2),
+    (755, 4812, 5)
 ]
 cat08_02_02_indices_cathegories = [
     (0, 501, 1),
@@ -84,8 +85,8 @@ cat08_02_02_indices_cathegories = [
 ]
 cat08_02_03_indices_cathegories = [
     (0, 551, 1),
-    (551, 801, 2),
-    (801, 2336, 4)
+    (551, 795, 2),
+    (795, 2336, 4)
 ]
 cat08_02_indices_cathegories = [cat08_02_00_indices_cathegories, cat08_02_01_indices_cathegories, cat08_02_02_indices_cathegories, cat08_02_03_indices_cathegories]
 cat08_02_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
@@ -109,19 +110,107 @@ cat08_03_03_indices_cathegories = [
 ]
 cat08_03_indices_cathegories = [cat08_03_00_indices_cathegories, cat08_03_01_indices_cathegories, cat08_03_02_indices_cathegories, cat08_03_03_indices_cathegories]
 cat08_03_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM04
+cat08_04_00_indices_cathegories = [
+    (0, 6171, 0)
+]
+cat08_04_01_indices_cathegories = [
+    (0, 325, 1),
+    (325, 985, 2),
+    (985, 4975, 5)
+]
+cat08_04_02_indices_cathegories = [
+    (0, 335, 1),
+    (335, 3723, 3)
+]
+cat08_04_03_indices_cathegories = [
+    (0, 305, 1),
+    (305, 965, 2),
+    (965, 2956, 4)
+]
+cat08_04_indices_cathegories = [cat08_04_00_indices_cathegories, cat08_04_01_indices_cathegories, cat08_04_02_indices_cathegories, cat08_04_03_indices_cathegories]
+cat08_04_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM05
+cat08_05_00_indices_cathegories = [
+    (0, 4260, 0)
+]
+cat08_05_01_indices_cathegories = [
+    (0, 570, 1),
+    (570, 1400, 2),
+    (1400, 5207, 5)
+]
+cat08_05_02_indices_cathegories = [
+    (0, 592, 1),
+    (592, 2396, 3)
+]
+cat08_05_03_indices_cathegories = [
+    (0, 545, 1),
+    (545, 1380, 2),
+    (1380, 2553, 4)
+]
+cat08_05_indices_cathegories = [cat08_05_00_indices_cathegories, cat08_05_01_indices_cathegories, cat08_05_02_indices_cathegories, cat08_05_03_indices_cathegories]
+cat08_05_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM06
+cat08_06_00_indices_cathegories = [
+    (0, 4260, 0)
+]
+cat08_06_01_indices_cathegories = [
+    (0, 475, 1),
+    (475, 915, 2),
+    (915, 5207, 5)
+]
+cat08_06_02_indices_cathegories = [
+    (0, 485, 1),
+    (485, 2396, 3)
+]
+cat08_06_03_indices_cathegories = [
+    (0, 470, 1),
+    (470, 900, 2),
+    (900, 2553, 4)
+]
+cat08_06_indices_cathegories = [cat08_06_00_indices_cathegories, cat08_06_01_indices_cathegories, cat08_06_02_indices_cathegories, cat08_06_03_indices_cathegories]
+cat08_06_connections = [(0,0), (1,2), (1,3), (2,4), (2,5)]
+# IM07
+cat08_07_00_indices_cathegories = [
+    (0, 6051, 0)
+]
+cat08_07_01_indices_cathegories = [
+    (0, 360, 1),
+    (360, 5874, 5)
+]
+cat08_07_02_indices_cathegories = [
+    (0, 330, 1),
+    (330, 465, 2),
+    (465, 2111, 3)
+]
+cat08_07_03_indices_cathegories = [
+    (0, 350, 1),
+    (350, 485, 2),
+    (485, 2287, 4)
+]
+cat08_07_indices_cathegories = [cat08_07_00_indices_cathegories, cat08_07_01_indices_cathegories, cat08_07_02_indices_cathegories, cat08_07_03_indices_cathegories]
+cat08_07_connections = [(0,0), (1,2), (1,5), (2,3), (2,4)]
 
 # attach everything together to gather these info programmatically and automatically
 cat08_ic_list = [
     cat08_00_indices_cathegories,
     cat08_01_indices_cathegories,
     cat08_02_indices_cathegories,
-    cat08_03_indices_cathegories
+    cat08_03_indices_cathegories,
+    cat08_04_indices_cathegories,
+    cat08_05_indices_cathegories,
+    cat08_06_indices_cathegories,
+    cat08_07_indices_cathegories
 ]
 cat08_conn_list = [
     cat08_00_connections,
     cat08_01_connections,
     cat08_02_connections,
-    cat08_03_connections
+    cat08_03_connections,
+    cat08_04_connections,
+    cat08_05_connections,
+    cat08_06_connections,
+    cat08_07_connections
 ]
 
 
