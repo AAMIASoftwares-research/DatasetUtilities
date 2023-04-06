@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name         = "DatasetUtilities"
-version      = "2023.03.27-01"
+version      = "2023.04.06-00"
 description      = "Testing installation of Package"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
@@ -23,7 +23,8 @@ requires-python = ">=3.8"
 dependencies = [
     "numpy",
     "matplotlib",
-    "scikit-learn"
+    "scikit-learn",
+    "git+https://github.com/AAMIASoftwares-research/HCATNetwork.git"
 ]
 
 

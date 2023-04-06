@@ -1,0 +1,4 @@
+numpy
+matplotlib
+scikit-learn
+git+https://github.com/AAMIASoftwares-research/HCATNetwork.git
