@@ -2,9 +2,11 @@ import os, sys
 import numpy
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
-import utils.utils as util
+import networkx, HCATNetwork
+import utils as util
 
-"""How does this script work
+
+"""How does this script work:
 This script works in two modes, decided by setting the flag "OPTION_EXPLORE_CENTERLINE".
 OPTION_EXPLORE_CENTERLINE = True:
     The program is used to explore the centelrines point by point.
@@ -223,7 +225,7 @@ if __name__ == "__main__":
     if not OPTION_EXPLORE_CENTERLINE:
         n_cat08_img = int(os.path.split(CAT08_IM_folder)[1][-2:])
         centerlines_ic_list = cat08_ic_list[n_cat08_img]
-        centelrines_cat_conn = cat08_conn_list[n_cat08_img]
+        centerlines_cat_conn = cat08_conn_list[n_cat08_img]
     else:
         # This visualisation tool is used to get the indices, for each centerline, of the
         # common segments manually, since doing it automatically is requiring too much development time
@@ -255,9 +257,9 @@ if __name__ == "__main__":
         for a in t1_ic_list:
             for b in a:
                 categories.append(b[2])
-        categories = set(categories)
+        t1_categories = set(categories)
         t1_final_segments_tuples_list = []
-        for c in categories:
+        for c in t1_categories:
             # get start and end indices
             list_of_centerline_segments = []
             for i_c, cent in enumerate(t1_list):
@@ -333,9 +335,9 @@ if __name__ == "__main__":
         for a in t2_ic_list:
             for b in a:
                 categories.append(b[2])
-        categories = set(categories)
+        t2_categories = set(categories)
         t2_final_segments_tuples_list = []
-        for c in categories:
+        for c in t2_categories:
             # get start and end indices
             list_of_centerline_segments = []
             for i_c, cent in enumerate(t2_list):
@@ -386,7 +388,6 @@ if __name__ == "__main__":
                     fsa = numpy.append(fsa, fsa[-1])
                     final_segment[:,i_xyzr] = numpy.convolve(fsa, [1/3, 1/3, 1/3])[2:-2]
                 # now, the final segment is ready, just sample it once every 0.3 mm of arc length
-                #          use getCenterlinePointFromArcLength()
                 total_len = util.getCentelrineArcLength(final_segment)
                 accumulated_len = 0.0
                 arc_len_list = []
@@ -402,6 +403,7 @@ if __name__ == "__main__":
     # Now, just stitch the segments together following the connection lists in a graph,
     # and there you go, you should be done
 
+
     print("Debug plot...")
     ax = plt.subplot(111, projection="3d")
     for ccc in t1_final_segments_tuples_list:
@@ -411,6 +413,72 @@ if __name__ == "__main__":
     for ccc in t2_final_segments_tuples_list:
         ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
     plt.show()
+
+    g_dict = HCATNetwork.graph.getGraphDictFromKeyList(HCATNetwork.graph.CenterlineGraph_KeysList)
+    g_dict["image_id"] = f"CAT08_dataset{IM_NUMBER:02d}"
+    g_dict["are_left_right_disjointed"] = True
+    g = networkx.MultiDiGraph(**g_dict)
+    graph_node_index_counter = 0
+    # t1 - RCA for CAT08
+    if len(t1_final_segments_tuples_list) == 1:
+        # just one segment in the whole arterial tree
+        print("alone, think about it later cause it is easier")
+    else:
+        # Multiple 
+        print("t1 is never alone in the pure form of the cat08 dataset")
+    # t2 - LCA for CAT08
+    if len(t2_final_segments_tuples_list) == 1:
+        # just one segment in the whole arterial tree
+        print("alone, think about it later cause it is easier")
+    else:
+        # Multiple 
+        for points_list, category in t2_final_segments_tuples_list:
+            # deal with segment points
+            for i, p in enumerate(points_list):
+                # node
+                n_dict = HCATNetwork.node.getNodeDictFromKeyList(HCATNetwork.node.SimpleCenterlineNode_KeysList)
+                if category == min(t2_categories) and i == 0:
+                    n_dict["class"] = "o"
+                elif i == len(points_list) - 1:
+                    has_downstream_connecion = False
+                    for conn in centerlines_cat_conn:
+                        if categories == conn[0]:
+                            has_downstream_connecion = True
+                            break
+                    n_dict["class"] = "i" if has_downstream_connecion else "e"
+                else:
+                    n_dict["class"] = "s"
+                n_dict["x"], n_dict["y"], n_dict["z"], n_dict["r"] = p[0], p[1], p[2], p[3]
+                n_dict["t"] = 0.0
+                n_dict["tree"] = "l"
+                prev_graph_node_index_counter = graph_node_index_counter
+                g.add_node(str(category*1000 + graph_node_index_counter), **n_dict)
+                #########################################################################################################################################
+                #########################################################################################################################################
+                #########################################################################################################################################
+                # SPOSTA TUTTO IN UNA FUNZIONE CHE CONNETTE TUTTI I PUNTI DI UN SINGOLO SEGMENTO
+                # UNA VOLTA FATTO QUESTO, CONNETTERE I SEGMENTI FRA LORO DEVE ESSERE PIù FACILE
+                # DEVI FARLO IN MODO AUTOMATICO, NON AD HOC, PERCHE SE IN FUTURO AVRAI ALTRI DATI
+                # SU CUI APPLICARE QUESTO CONCETTO, ALMENO SARà GIà PRONTO
+                # prova qualcosa di ricorsivo....
+                #########################################################################################################################################
+                #########################################################################################################################################
+                #########################################################################################################################################
+                # upstream edge
+                if n_dict["class"] != "o":
+                    e_dict = HCATNetwork.edge.getEdgeDictFromKeyList(HCATNetwork.edge.BasicEdge_KeysList)
+                    e_dict["signed_distance"] = - numpy.linalg.norm(
+                        HCATNetwork.node.getNumpyVertexFromSimpleCenterlineNode(n_dict) - \
+                        HCATNetwork.node.getNumpyVertexFromSimpleCenterlineNode(g.nodes[str(prev_graph_node_index_counter)]),
+                        axis=0
+                    )
+                    e_dict["weight"] = e_dict["signed_distance"]
+                # downstream edge cannot be done 
+                # do not know if it can be done
+
+            # deal with smooth connections
+            
+            
 
 
             
