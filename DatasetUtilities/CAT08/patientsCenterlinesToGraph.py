@@ -18,7 +18,8 @@ OPTION_EXPLORE_CENTERLINE = False:
 """
 OPTION_EXPLORE_CENTERLINE = 0
 
-IM_NUMBER = int(0) # accepted 0 to 7
+IM_NUMBER = 1 # accepted 0 to 7
+IM_NUMBER = int(IM_NUMBER)
 
 CAT08_IM_folder = os.path.normpath(
     f"C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset{IM_NUMBER:02d}\\"
@@ -437,9 +438,9 @@ if __name__ == "__main__":
         ###########
         ###########
         # populate graph with intra-connected segments
-        segment_start_end_nodes_tuplelist = []
+        segment_start_end_nodes_dict = {}
         for t2_ in t2_final_segments_tuples_list:
-            segment_start_end_nodes_tuplelist.append(
+            segment_start_end_nodes_dict.update(
                 util.connectGraphIntersegment(
                     graph=graph_bcg,
                     sgm_tuple=t2_,
@@ -452,9 +453,33 @@ if __name__ == "__main__":
             if conn_tuple[0] == conn_tuple[1]:
                 continue
             # take last node of first segment in conn_tuple and connect it to first node of last segment in conn_tuple
-            
-        print(segment_start_end_nodes_tuplelist)
-        print(centerlines_cat_conn)
+            edge_features = HCATNetwork.edge.BasicEdge()
+            node1 = segment_start_end_nodes_dict[conn_tuple[0]]["e"]
+            node2 = segment_start_end_nodes_dict[conn_tuple[1]]["s"]
+            node1_v = HCATNetwork.node.SimpleCenterlineNode(**graph_bcg.nodes[node1]).getVertexNumpyArray()
+            node2_v = HCATNetwork.node.SimpleCenterlineNode(**graph_bcg.nodes[node2]).getVertexNumpyArray()
+            edge_features["euclidean_distance"] = float(numpy.linalg.norm(node1_v-node2_v))
+            edge_features.updateWeightFromEuclideanDistance()
+            graph_bcg.add_edge(node1, node2, **edge_features)
+
+        # Plot  ###################### keep only for debugging - use at the end to plot graph, try in 3d ###############
+        if 1:
+            color_list__ = []
+            pos_dict__ = {}
+            for n in graph_bcg.nodes:
+                n_scn = HCATNetwork.node.SimpleCenterlineNode(**(graph_bcg.nodes[n]))
+                pos_dict__.update(**{n: n_scn.getVertexList()[:2]})
+                color_list__.append(n_scn["topology_class"].value)
+            networkx.draw(
+                graph_bcg,
+                **{"with_labels": False, 
+                    "node_color": color_list__, 
+                    "node_size": 50,
+                    "pos": pos_dict__,
+                    }
+            )
+            plt.show()
+
         quit()
 
         util.connectGraph(

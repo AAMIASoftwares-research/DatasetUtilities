@@ -178,7 +178,7 @@ def connectGraphIntersegment(
     # note that the graph object gets modified in place, no need to return it
     segment_first_node_id = str(start_node_id_int)
     segment_last_node_id = str(end_node_id_int)
-    return (seg_id, segment_first_node_id, segment_last_node_id)
+    return {seg_id: {"s":segment_first_node_id, "e":segment_last_node_id}}
 
 def connectGraph(graph, sgm_tuples_list, connections, tree) -> None:
     connections_array = numpy.array(connections)
