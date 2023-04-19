@@ -5,7 +5,6 @@ from sklearn.cluster import DBSCAN
 import networkx, HCATNetwork
 import utils as util
 
-
 """How does this script work:
 This script works in two modes, decided by setting the flag "OPTION_EXPLORE_CENTERLINE".
 OPTION_EXPLORE_CENTERLINE = True:
@@ -402,8 +401,6 @@ if __name__ == "__main__":
 
     # Now, just stitch the segments together following the connection lists in a graph,
     # and there you go, you should be done
-
-
     print("Debug plot...")
     ax = plt.subplot(111, projection="3d")
     for ccc in t1_final_segments_tuples_list:
@@ -414,10 +411,13 @@ if __name__ == "__main__":
         ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
     plt.show()
 
-    g_dict = HCATNetwork.graph.getGraphDictFromKeyList(HCATNetwork.graph.CenterlineGraph_KeysList)
+
+
+
+    g_dict = HCATNetwork.graph.BasicCenterlineGraph()
     g_dict["image_id"] = f"CAT08_dataset{IM_NUMBER:02d}"
     g_dict["are_left_right_disjointed"] = True
-    g = networkx.MultiDiGraph(**g_dict)
+    graph_bcg = networkx.Graph(**g_dict)
     graph_node_index_counter = 0
     # t1 - RCA for CAT08
     if len(t1_final_segments_tuples_list) == 1:
@@ -426,11 +426,50 @@ if __name__ == "__main__":
     else:
         # Multiple 
         print("t1 is never alone in the pure form of the cat08 dataset")
+
+
     # t2 - LCA for CAT08
     if len(t2_final_segments_tuples_list) == 1:
         # just one segment in the whole arterial tree
         print("alone, think about it later cause it is easier")
     else:
+        ############
+        ###########
+        ###########
+        # populate graph with intra-connected segments
+        segment_start_end_nodes_tuplelist = []
+        for t2_ in t2_final_segments_tuples_list:
+            segment_start_end_nodes_tuplelist.append(
+                util.connectGraphIntersegment(
+                    graph=graph_bcg,
+                    sgm_tuple=t2_,
+                    tree=HCATNetwork.node.ArteryPointTree.LEFT,
+                    connections=centerlines_cat_conn
+                )
+            )
+        # connect segments
+        for conn_tuple in centerlines_cat_conn:
+            if conn_tuple[0] == conn_tuple[1]:
+                continue
+            # take last node of first segment in conn_tuple and connect it to first node of last segment in conn_tuple
+            
+        print(segment_start_end_nodes_tuplelist)
+        print(centerlines_cat_conn)
+        quit()
+
+        util.connectGraph(
+            graph_bcg,
+            t2_final_segments_tuples_list,
+            centerlines_cat_conn,
+            HCATNetwork.node.ArteryPointTree.LEFT
+        )
+
+
+        ###########################
+        ###########################
+        #### kinda works, but do not understand it anymore
+        ############################
+        ############################
         # Multiple 
         for points_list, category in t2_final_segments_tuples_list:
             # deal with segment points

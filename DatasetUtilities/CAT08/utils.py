@@ -2,6 +2,7 @@ import os
 import numpy
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
+import networkx, HCATNetwork
 
 def importCenterlineList(cat08_im_folder_path:str):
     v_list = []
@@ -106,9 +107,89 @@ def getCentelrinesFurthestConnectionIndex(c_i: numpy.ndarray, c_j: numpy.ndarray
     return conn_index
 
 
+#####################
+# BUILDING THE GRAPHS
+#####################
+
+"""
+use recursion both to add nodes and to add segments together
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+"""
+
+def connectGraphIntrasegment():
+    pass
+
+def connectGraphIntersegment(
+        graph: networkx.classes.graph.Graph|
+               networkx.classes.digraph.DiGraph|
+               networkx.classes.multigraph.MultiGraph|
+               networkx.classes.multidigraph.MultiDiGraph,
+        sgm_tuple: tuple[list, int],
+        tree: HCATNetwork.node.ArteryPointTree,
+        connections):
+    start_node_id_int = graph.number_of_nodes()
+    p_list, seg_id = sgm_tuple
+    connections = numpy.array(connections)
+    # Nodes
+    node_idx_int = start_node_id_int
+    for i_, p in enumerate(p_list):
+        node_attributes = HCATNetwork.node.SimpleCenterlineNode()
+        node_attributes.setVertexRadius(p)
+        node_attributes["t"] = 0.0
+        if i_ == 0 and not (seg_id == connections[:,1]).any():
+            topology_class = HCATNetwork.node.ArteryPointTopologyClass.OSTIUM
+        elif i_ == len(p_list)-1:
+            if not (seg_id == connections[:,0]).any():
+                topology_class = HCATNetwork.node.ArteryPointTopologyClass.ENDPOINT
+            else:
+                topology_class = HCATNetwork.node.ArteryPointTopologyClass.INTERSECTION
+        else:
+            topology_class = HCATNetwork.node.ArteryPointTopologyClass.SEGMENT
+        node_attributes["topology_class"] = topology_class
+        node_attributes["arterial_tree"] = tree
+        graph.add_node(str(node_idx_int), **node_attributes)
+        end_node_id_int = node_idx_int
+        node_idx_int += 1
+    # Edges
+    for i_ in range(start_node_id_int, end_node_id_int):
+        edge_features = HCATNetwork.edge.BasicEdge()
+        node1_v = HCATNetwork.node.SimpleCenterlineNode(**graph.nodes[str(i_)]).getVertexNumpyArray()
+        node2_v = HCATNetwork.node.SimpleCenterlineNode(**graph.nodes[str(i_+1)]).getVertexNumpyArray()
+        edge_features["euclidean_distance"] = float(numpy.linalg.norm(node1_v-node2_v))
+        edge_features.updateWeightFromEuclideanDistance()
+        graph.add_edge(str(i_), str(i_+1), **edge_features)
+    # Plot  ###################### keep only for debugging - use at the end to plot graph, try in 3d ###############
+    if 0:
+        color_list__ = []
+        pos_dict__ = {}
+        for n in graph.nodes:
+            n_scn = HCATNetwork.node.SimpleCenterlineNode(**(graph.nodes[n]))
+            pos_dict__.update(**{n: n_scn.getVertexList()[:2]})
+            color_list__.append(n_scn["topology_class"].value)
+        networkx.draw(
+            graph,
+            **{"with_labels": False, 
+            "node_color": color_list__, 
+                "node_size": 50,
+                "pos": pos_dict__}
+        )
+        plt.show()
+    # Out
+    # note that the graph object gets modified in place, no need to return it
+    segment_first_node_id = str(start_node_id_int)
+    segment_last_node_id = str(end_node_id_int)
+    return (seg_id, segment_first_node_id, segment_last_node_id)
+
+def connectGraph(graph, sgm_tuples_list, connections, tree) -> None:
+    connections_array = numpy.array(connections)
+    # connect intersegment points
+    # connect next points
+    
+
+
 
 ###############
-# VISUALISATION 
+# VISUALISATION
 ###############
 
 colors=["red", "blue", "orange", "green", "black", "pink", "yellow"]
