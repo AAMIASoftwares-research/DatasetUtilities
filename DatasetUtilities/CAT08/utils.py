@@ -230,16 +230,17 @@ def connectGraphIntersegment(
     start_node_id_int = graph.number_of_nodes()
     p_list, seg_id = sgm_tuple
     connections = numpy.array(connections)
+    is_alone = ((connections[:,0] == seg_id) == (connections[:,1] == seg_id)).all()
     # Nodes
     node_idx_int = start_node_id_int
     for i_, p in enumerate(p_list):
         node_attributes = HCATNetwork.node.SimpleCenterlineNode()
         node_attributes.setVertexRadius(p)
         node_attributes["t"] = 0.0
-        if i_ == 0 and not (seg_id == connections[:,1]).any():
+        if i_ == 0 and not ((seg_id == connections[:,1]).any() and not is_alone):
             topology_class = HCATNetwork.node.ArteryPointTopologyClass.OSTIUM
         elif i_ == len(p_list)-1:
-            if not (seg_id == connections[:,0]).any():
+            if not (seg_id == connections[:,0]).any() or is_alone:
                 topology_class = HCATNetwork.node.ArteryPointTopologyClass.ENDPOINT
             else:
                 topology_class = HCATNetwork.node.ArteryPointTopologyClass.INTERSECTION
