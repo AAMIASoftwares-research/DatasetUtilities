@@ -21,6 +21,8 @@ OPTION_EXPLORE_CENTERLINE = 0
 IM_NUMBER = 1 # accepted 0 to 7
 IM_NUMBER = int(IM_NUMBER)
 
+POINTS_TARGET_SPACING = 0.03 # mm -> each point of the graph will be, more or less, 0.3 mm apart
+
 CAT08_IM_folder = os.path.normpath(
     f"C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset{IM_NUMBER:02d}\\"
 )
@@ -359,7 +361,14 @@ if __name__ == "__main__":
             if len(list_of_centerline_segments) < 1:
                 raise RuntimeError("list_of_centerline_segments should always have at least one member, instead it is empty.")
             elif len(list_of_centerline_segments) == 1:
-                t2_final_segments_tuples_list.append((list_of_centerline_segments[0],c))
+                # now, the final segment is ready, just sample it once every 0.3 mm of arc length
+                total_len = util.getCentelrineArcLength(list_of_centerline_segments[0])
+                arc_len_list = numpy.arange(0,total_len, POINTS_TARGET_SPACING)
+                resampled_final_segment = numpy.zeros((len(arc_len_list), list_of_centerline_segments[0].shape[1]))
+                for i in range(len(arc_len_list)):
+                    resampled_final_segment[i,:] = util.getCenterlinePointFromArcLength(list_of_centerline_segments[0], arc_len_list[i])
+                # out
+                t2_final_segments_tuples_list.append((resampled_final_segment,c))
             else:
                 # get longer segment, and use that segment indicisation to compute the mean path
                 len_longest_segment = 0
@@ -389,32 +398,26 @@ if __name__ == "__main__":
                     final_segment[:,i_xyzr] = numpy.convolve(fsa, [1/3, 1/3, 1/3])[2:-2]
                 # now, the final segment is ready, just sample it once every 0.3 mm of arc length
                 total_len = util.getCentelrineArcLength(final_segment)
-                accumulated_len = 0.0
-                arc_len_list = []
-                while accumulated_len <= total_len:
-                    arc_len_list.append(accumulated_len)
-                    accumulated_len += 0.3
+                arc_len_list = numpy.arange(0,total_len, POINTS_TARGET_SPACING)
                 resampled_final_segment = numpy.zeros((len(arc_len_list), final_segment.shape[1]))
                 for i in range(len(arc_len_list)):
                     resampled_final_segment[i,:] = util.getCenterlinePointFromArcLength(final_segment, arc_len_list[i])
                 # save it
-                t2_final_segments_tuples_list.append((final_segment,c))
+                t2_final_segments_tuples_list.append((resampled_final_segment,c))
+
+    if 1:
+        # final plot of all disjointed segments
+        ax = plt.subplot(111, projection="3d")
+        for ccc in t1_final_segments_tuples_list:
+            ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
+        plt.show()
+        ax = plt.subplot(111, projection="3d")
+        for ccc in t2_final_segments_tuples_list:
+            ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
+        plt.show()
 
     # Now, just stitch the segments together following the connection lists in a graph,
     # and there you go, you should be done
-    print("Debug plot...")
-    ax = plt.subplot(111, projection="3d")
-    for ccc in t1_final_segments_tuples_list:
-        ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
-    plt.show()
-    ax = plt.subplot(111, projection="3d")
-    for ccc in t2_final_segments_tuples_list:
-        ax.plot(ccc[0][:,0], ccc[0][:,1], ccc[0][:,2],".-")
-    plt.show()
-
-
-
-
     g_dict = HCATNetwork.graph.BasicCenterlineGraph()
     g_dict["image_id"] = f"CAT08_dataset{IM_NUMBER:02d}"
     g_dict["are_left_right_disjointed"] = True
@@ -434,16 +437,59 @@ if __name__ == "__main__":
         # just one segment in the whole arterial tree
         print("alone, think about it later cause it is easier")
     else:
-        ############
-        ###########
-        ###########
+        # add cubic bezier extension to middle segments towards previous segments
+        cent_conn_ = numpy.array(centerlines_cat_conn)
+        for [in_, out_] in cent_conn_:
+            if in_ == out_:
+                continue
+            # find in and out segments in tuple list (with dict was much easier... noted for the future me...)
+            tpl_index_in = None
+            tpl_index_out = None
+            for i_, tpl_ in enumerate(t2_final_segments_tuples_list):
+                if tpl_[1] == in_:
+                    tpl_index_in = i_
+                if tpl_[1] == out_:
+                    tpl_index_out = i_
+            # get start and end control points
+            p0 = t2_final_segments_tuples_list[tpl_index_in][0][-1]
+            p3 = t2_final_segments_tuples_list[tpl_index_out][0][0]
+            # get two middle control points
+            d = numpy.linalg.norm(p0 - p3)
+            v0 = p3 - p0
+            v0 /= numpy.linalg.norm(v0)
+            p1 = p0 + v0*0.333*d
+            v1 = numpy.mean([t2_final_segments_tuples_list[tpl_index_out][0][0] - t2_final_segments_tuples_list[tpl_index_out][0][j_] for j_ in [1,2,3]], axis=0)
+            v1 /= numpy.linalg.norm(v1)
+            p2 = p3 + v1*0.333*d
+            # make bezier
+            bez = numpy.array([util.cubiBezier(p0,p1,p2,p3,t_) for t_ in numpy.linspace(0,1,500)])
+            # attach it to out_ segment, in the front
+            bez_plus_out_segment = numpy.zeros((bez.shape[0]-1+t2_final_segments_tuples_list[tpl_index_out][0].shape[0],bez.shape[1]))
+            bez_plus_out_segment[:bez.shape[0]-1,:] = bez[:-1,:]
+            bez_plus_out_segment[bez.shape[0]-1:,:] = t2_final_segments_tuples_list[tpl_index_out][0]
+            # resample it
+            arclen_ = util.getCentelrineArcLength(bez_plus_out_segment)
+            t_vec = numpy.arange(0,arclen_, POINTS_TARGET_SPACING, dtype="float")
+            bez_plus_out_segment_new = numpy.array([util.getCenterlinePointFromArcLength(bez_plus_out_segment, t_) for t_ in t_vec])
+            bez_plus_out_segment = bez_plus_out_segment_new[1:]
+            if 0:
+                # useful plot to explain how the procedure works, visually
+                # It is better to show the bezier not resampled, or both (before and after resampling)
+                plt.plot(bez_plus_out_segment[:,0], bez_plus_out_segment[:,1],".-")
+                p_ = numpy.array([p0,p1,p2,p3])
+                plt.scatter(p_[:,0], p_[:,1], c="orange")
+                plt.plot([p0[0], p0[0]+v0[0]], [p0[1], p0[1]+v0[1]], color="grey")
+                plt.plot([p3[0], p3[0]+v1[0]], [p3[1], p3[1]+v1[1]], color="grey")
+                plt.show()
+            # assign extended curve to the results storage, ready for the next step
+            t2_final_segments_tuples_list[tpl_index_out] = (bez_plus_out_segment, t2_final_segments_tuples_list[tpl_index_out][1])
         # populate graph with intra-connected segments
         segment_start_end_nodes_dict = {}
-        for t2_ in t2_final_segments_tuples_list:
+        for tpl_ in t2_final_segments_tuples_list:
             segment_start_end_nodes_dict.update(
                 util.connectGraphIntersegment(
                     graph=graph_bcg,
-                    sgm_tuple=t2_,
+                    sgm_tuple=tpl_,
                     tree=HCATNetwork.node.ArteryPointTree.LEFT,
                     connections=centerlines_cat_conn
                 )
@@ -479,70 +525,12 @@ if __name__ == "__main__":
                     }
             )
             plt.show()
+            # plot edge distances
+            edge_weights = [w for (u, v, w) in graph_bcg.edges.data("weight", default=-1.0)]
+            plt.plot(edge_weights)
+            plt.show()
 
-        quit()
-
-        util.connectGraph(
-            graph_bcg,
-            t2_final_segments_tuples_list,
-            centerlines_cat_conn,
-            HCATNetwork.node.ArteryPointTree.LEFT
-        )
-
-
-        ###########################
-        ###########################
-        #### kinda works, but do not understand it anymore
-        ############################
-        ############################
-        # Multiple 
-        for points_list, category in t2_final_segments_tuples_list:
-            # deal with segment points
-            for i, p in enumerate(points_list):
-                # node
-                n_dict = HCATNetwork.node.getNodeDictFromKeyList(HCATNetwork.node.SimpleCenterlineNode_KeysList)
-                if category == min(t2_categories) and i == 0:
-                    n_dict["class"] = "o"
-                elif i == len(points_list) - 1:
-                    has_downstream_connecion = False
-                    for conn in centerlines_cat_conn:
-                        if categories == conn[0]:
-                            has_downstream_connecion = True
-                            break
-                    n_dict["class"] = "i" if has_downstream_connecion else "e"
-                else:
-                    n_dict["class"] = "s"
-                n_dict["x"], n_dict["y"], n_dict["z"], n_dict["r"] = p[0], p[1], p[2], p[3]
-                n_dict["t"] = 0.0
-                n_dict["tree"] = "l"
-                prev_graph_node_index_counter = graph_node_index_counter
-                g.add_node(str(category*1000 + graph_node_index_counter), **n_dict)
-                #########################################################################################################################################
-                #########################################################################################################################################
-                #########################################################################################################################################
-                # SPOSTA TUTTO IN UNA FUNZIONE CHE CONNETTE TUTTI I PUNTI DI UN SINGOLO SEGMENTO
-                # UNA VOLTA FATTO QUESTO, CONNETTERE I SEGMENTI FRA LORO DEVE ESSERE PIù FACILE
-                # DEVI FARLO IN MODO AUTOMATICO, NON AD HOC, PERCHE SE IN FUTURO AVRAI ALTRI DATI
-                # SU CUI APPLICARE QUESTO CONCETTO, ALMENO SARà GIà PRONTO
-                # prova qualcosa di ricorsivo....
-                #########################################################################################################################################
-                #########################################################################################################################################
-                #########################################################################################################################################
-                # upstream edge
-                if n_dict["class"] != "o":
-                    e_dict = HCATNetwork.edge.getEdgeDictFromKeyList(HCATNetwork.edge.BasicEdge_KeysList)
-                    e_dict["signed_distance"] = - numpy.linalg.norm(
-                        HCATNetwork.node.getNumpyVertexFromSimpleCenterlineNode(n_dict) - \
-                        HCATNetwork.node.getNumpyVertexFromSimpleCenterlineNode(g.nodes[str(prev_graph_node_index_counter)]),
-                        axis=0
-                    )
-                    e_dict["weight"] = e_dict["signed_distance"]
-                # downstream edge cannot be done 
-                # do not know if it can be done
-
-            # deal with smooth connections
-            
-            
+        
 
 
             
@@ -559,10 +547,9 @@ if __name__ == "__main__":
     
     
     
-    
-    
-    
-    
+
+
+
     
     sys.exit()
     
