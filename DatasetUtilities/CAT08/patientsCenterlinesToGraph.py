@@ -18,7 +18,7 @@ OPTION_EXPLORE_CENTERLINE = False:
 """
 OPTION_EXPLORE_CENTERLINE = 0
 
-IM_NUMBER = 7 # accepted 0 to 7
+IM_NUMBER = 0 # accepted 0 to 7
 IM_NUMBER = int(IM_NUMBER)
 
 POINTS_TARGET_SPACING = 0.03 # mm -> each point of the graph will be, more or less, 0.3 mm apart
@@ -291,21 +291,7 @@ if __name__ == "__main__":
     print(" LCA done")
     
     if 1:
-        color_list__ = []
-        pos_dict__ = {}
-        for n in graph_bcg.nodes:
-            n_scn = HCATNetwork.node.SimpleCenterlineNode(**(graph_bcg.nodes[n]))
-            pos_dict__.update(**{n: n_scn.getVertexList()[:2]})
-            color_list__.append(n_scn["topology_class"].value)
-        networkx.draw(
-            graph_bcg,
-            **{"with_labels": False, 
-                "node_color": color_list__, 
-                "node_size": 50,
-                "pos": pos_dict__,
-                }
-        )
-        plt.show()
+        HCATNetwork.draw.draw2DCenterlinesGraph(graph_bcg)
     
     # Save the graph to file
     graph_save_path = f"C:\\Users\\lecca\\Desktop\\GraphsCAT08\\dataset{IM_NUMBER:02d}.GML"
@@ -314,21 +300,7 @@ if __name__ == "__main__":
     # Load the graph from file and try plotting it again
     graph_2 = HCATNetwork.graph.loadGraph(graph_save_path)
     if 1:
-        color_list__ = []
-        pos_dict__ = {}
-        for n in graph_2.nodes:
-            n_scn = HCATNetwork.node.SimpleCenterlineNode(**(graph_2.nodes[n]))
-            pos_dict__.update(**{n: n_scn.getVertexList()[:2]})
-            color_list__.append(n_scn["topology_class"].value)
-        networkx.draw(
-            graph_2,
-            **{"with_labels": False, 
-                "node_color": color_list__, 
-                "node_size": 50,
-                "pos": pos_dict__,
-                }
-        )
-        plt.show()
+        HCATNetwork.draw.draw2DCenterlinesGraph(graph_2)
     
     sys.exit()
 
