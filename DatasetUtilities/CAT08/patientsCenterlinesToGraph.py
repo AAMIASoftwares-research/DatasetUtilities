@@ -18,7 +18,7 @@ OPTION_EXPLORE_CENTERLINE = False:
 """
 OPTION_EXPLORE_CENTERLINE = 0
 
-IM_NUMBER = 1 # accepted 0 to 7
+IM_NUMBER = 7 # accepted 0 to 7
 IM_NUMBER = int(IM_NUMBER)
 
 POINTS_TARGET_SPACING = 0.03 # mm -> each point of the graph will be, more or less, 0.3 mm apart
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     print("Building the graph...")
     g_dict = HCATNetwork.graph.BasicCenterlineGraph(
         **{
-            "image_id": f"CAT08_dataset{IM_NUMBER:02d}",
+            "image_id": f"CAT08/dataset{IM_NUMBER:02d}",
             "are_left_right_disjointed": True
         }
     )
@@ -308,7 +308,7 @@ if __name__ == "__main__":
         plt.show()
     
     # Save the graph to file
-    graph_save_path = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\DatasetUtilities\\DatasetUtilities\\CAT08\\aaa_graph_prova.GML"
+    graph_save_path = f"C:\\Users\\lecca\\Desktop\\GraphsCAT08\\dataset{IM_NUMBER:02d}.GML"
     HCATNetwork.graph.saveGraph(graph_bcg, graph_save_path)
 
     # Load the graph from file and try plotting it again

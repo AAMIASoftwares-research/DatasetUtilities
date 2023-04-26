@@ -176,6 +176,7 @@ def getCentelrinesFurthestConnectionIndex(c_i: numpy.ndarray, c_j: numpy.ndarray
 # COMMON SEGMENT CENTERLINES
 # TOGETHER
 #############################
+
 def routineMergeCenterlineCommonSegments(t_list, t_ic_list) -> list[tuple[numpy.ndarray,int]]:
     if len(t_ic_list) < 2:
         # centerline is alone
@@ -299,6 +300,9 @@ def test_cubicBezierRespaced():
     plt.axis("equal")
     plt.show()
 
+if __name__ == "__main__":
+    test_cubicBezierRespaced()
+
 
 def connectGraphIntersegment(
         graph: networkx.classes.graph.Graph|
@@ -372,6 +376,7 @@ def buildAndConnectGraph(
     """
     This utility method creates the graph starting from the segments
     tuples.
+    it resamples all curves so that the points are "graph_nodes_target_spacing_mm" distant from each other.
     It takes as input the target graph, so it has no output, the graph is updated and modified in place.
     """ 
     if len(t_final_segments_tuples_list) == 1:
@@ -416,7 +421,7 @@ def buildAndConnectGraph(
             v1 /= numpy.linalg.norm(v1)
             p2 = p3 + v1*0.333*d
             # make bezier
-            n_linspace = int(1.5*d/0.3) # this is just indicative
+            n_linspace = max(20, int(1.5*d/graph_nodes_target_spacing_mm))
             bez = numpy.array([cubiBezier(p0,p1,p2,p3,t_) for t_ in numpy.linspace(0,1,n_linspace)])
             # attach it to out_ segment, in the front
             bez_plus_out_segment = numpy.zeros((bez.shape[0]-1+t_final_segments_tuples_list[tpl_index_out][0].shape[0],bez.shape[1]))
@@ -431,7 +436,12 @@ def buildAndConnectGraph(
                 # PLOT for DEBUGGING and EXPLAINABILITY
                 # useful plot to explain how the procedure works, visually
                 # It is better to show the bezier not resampled, or both (before and after resampling)
+                plt.plot(bez[:,0], bez[:,1],".-")
+                plt.title("Bezier only")
+                plt.show()
+                # bezier plus segment
                 plt.plot(bez_plus_out_segment[:,0], bez_plus_out_segment[:,1],".-")
+                plt.plot(bez[:,0], bez[:,1],"o--", color="purple")
                 p_ = numpy.array([p0,p1,p2,p3])
                 plt.scatter(p_[:,0], p_[:,1], c="orange")
                 plt.plot([p0[0], p0[0]+v0[0]], [p0[1], p0[1]+v0[1]], color="grey")
