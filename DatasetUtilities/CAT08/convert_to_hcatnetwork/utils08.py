@@ -2,7 +2,9 @@ import os
 import numpy
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
-import networkx, HCATNetwork
+import networkx
+import hcatnetwork
+
 
 def importCenterlineList(cat08_im_folder_path:str):
     v_list = []

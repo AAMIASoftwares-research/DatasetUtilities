@@ -1,7 +1,8 @@
 import os
 import matplotlib.pyplot as plt
 import utilsMolinette as util
-""" ### mATTACK PLAN ###
+
+""" ### ATTACK PLAN ###
 Molinette data are very "sparse", incomplete, sometimes slightly wrong and sometimes
 completely wrong. There is very little structure, if not in the pazNAME files, which
 should be anyway integrated with previously obtained centerlines.
@@ -22,7 +23,7 @@ graphs from such a sparse data representation.
 """
 
 base_path = os.path.normpath(
-    "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\Molinette\\Medis_Centerlines_STLs"
+    "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\Molinette\\Medis_Centerlines_STLs\\"
 )
 
 
@@ -32,17 +33,19 @@ PATIENTS = [
     'LA', 'LG', 'LMG', 'LU', 'MA', 'MG', 'MM', 'MT', 'NR', 'PEG', 'PS',
     'RI', 'SA', 'SAN', 'SGF', 'TL', 'ZG', 'ZGI'
 ]
+PATIENTS_WITH_FULL_TREES = [
+    p for p in os.listdir(base_path) if p[:2] == "pa"
+]
 ARTERIES_TO_BE_MANUALLY_REVISED = { # "patient": ["artery", "list"]
     "BF": ["RCA"],
     "BR": ["RCA"],
     "EFA": ["LCX", "LAD"],
     "GGI": ["LCX"],
-    "ID": ["LAD", "LCX"], # ostium
-    "LMG":["RCA"], # ostium, try to fix it
-    "MT": ["LAD", "LCX", "RCA"], # everything is shifted - can be corrected probably
+    "ID": ["LAD", "LCX"],         # ostium
+    "LMG":["RCA"],                # ostium, try to fix it
+    "MT": ["LAD", "LCX", "RCA"],  # everything is shifted - can be corrected probably
     "NR": ["LAD", "LCX", "RCA"],  # everything is shifted + other errors
-    "RI": ["RCA"], # distal
-
+    "RI": ["RCA"],                # distal
 }
 ARTERIES_WITH_IRREPARABLE_ISSUES = { # "patient": ["artery", "list"]
     "DTA":["LAD", "LCX"],
@@ -50,20 +53,17 @@ ARTERIES_WITH_IRREPARABLE_ISSUES = { # "patient": ["artery", "list"]
     "GR": ["LCX"],
     "LA": ["RCA"],
     "RI": ["LCX"]
-
 }
 ARTERY_NAMES = ["RCA", "LAD", "LCX", "D1"]
 # KEEP IN MIND! 
-#   The name of the arteries IS NOT INDICATIVE of the real artery classification name.
+#   The name of the arteries IS NOT INDICATIVE of the real standard artery classification name.
 #   Also, the tracked arteries often enter the ostium too much!
 
 if __name__ == "__main__":
 
-    if 0:
-        ### first try
-        ''' code does not work, it worked but i changes some variables
+    if 1:
         centerlines_list = []
-        for p in [os.path.join(base_path, PATIENTS[i]) for i in len(PATIENTS)]:
+        for p in [os.path.join(base_path, p_) for p_ in PATIENTS_WITH_FULL_TREES]:
             c = util.importCenterline(
                 os.path.join(base_path, p, "centerplanes.csv")
             )
@@ -73,13 +73,14 @@ if __name__ == "__main__":
             if 0:
                 util.plotCenterlines3D(c, title=p)
 
-        centerlines_list = util.splitOverlappingCenterlines(centerlines_list[1])
-        
-        ax = plt.subplot(111, projection="3d")
-        for i, l in enumerate(centerlines_list):
-            ax.plot(l[:,0]+i,l[:,1],l[:,2], ".-")
-        plt.show()
-        '''
+        for i, c_ in enumerate(centerlines_list):
+            centerlines_list_single_paz= util.splitOverlappingCenterlines(c_)
+            # plot
+            ax = plt.subplot(111, projection="3d")
+            for j, l in enumerate(centerlines_list_single_paz):
+                ax.plot(l[:,0],l[:,1],l[:,2], ".-", linewidth=0.5+2*j/len(centerlines_list_single_paz))
+            plt.title(PATIENTS_WITH_FULL_TREES[i])
+            plt.show()
 
     ### For each patient, save in a list all "single" centerlines
     # a single centerline is one that goes from the ostium to a single endpoint,

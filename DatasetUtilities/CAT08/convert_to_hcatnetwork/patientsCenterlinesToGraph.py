@@ -3,7 +3,7 @@ import numpy
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 import networkx, HCATNetwork
-import utils08 as util
+import DatasetUtilities.CAT08.convert_to_hcatnetwork.utils08 as util
 
 """How does this script work:
 This script works in two modes, decided by setting the flag "OPTION_EXPLORE_CENTERLINE".

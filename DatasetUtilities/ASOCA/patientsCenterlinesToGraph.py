@@ -55,6 +55,10 @@ for s,e_excl in zip(cells_idx_list[:-1], cells_idx_list[1:]):
     ###  VISUALIZE DATA
     ###
     ax.scatter(points_nparray_container[-1][:,0], points_nparray_container[-1][:,1], s=surf, zorder=zorder)
+    # points_nparray_container[a][b,c]
+    # a: indice del singolo tracciato di centerline
+    # b: indice del singolo punto
+    # c: 0->x, 1->y, 2->z
     surf /= 2
     zorder+=1
 ax.set_xlabel("Right -> Left (mm)")
