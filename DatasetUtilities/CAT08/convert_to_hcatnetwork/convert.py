@@ -322,7 +322,7 @@ if __name__ == "__main__":
     # double-checking
     ###########################
 
-    print("Graph types checking: \n\n")
+    print("DONE\n\n")
     graph_reloaded_05mm = hcatnetwork.io.load_graph(graph_save_path, output_type=hcatnetwork.graph.SimpleCenterlineGraph)
     hcatnetwork.draw.draw_simple_centerlines_graph_2d(graph_reloaded_05mm)
     
@@ -357,8 +357,8 @@ if __name__ == "__main__":
 
 
 
- 
-    
+
+
     #######################
     #### LEGACY STUFF #####
     #######################
