@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name         = "DatasetUtilities"
-version      = "2023.11.02-00"
+version      = "2023.11.03-00"
 description      = "Still under dev - do not use without permission of matteo.leccardi@polimi.it"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
@@ -25,7 +25,8 @@ dependencies = [
     "matplotlib",
     "scikit-learn",
     "vtk",
-    "git+https://github.com/AAMIASoftwares-research/HCATNetwork.git"
+    "SimpleITK",
+    "git+https://github.com/AAMIASoftwares-research/hcatnetwork.git"
 ]
 
 
@@ -59,4 +60,4 @@ exclude = []
 
 #[options.package_data]
 #* = README.md
-#HCATNetwork = *.json, *.txt
+#hcatnetwork = *.json, *.txt

@@ -6,8 +6,8 @@ if __name__ == "__main__":
     print("Running 'DatasetUtilities.utils' module")
     
     ## view a saved centerline graph
-    import HCATNetwork
+    import hcatnetwork
     graph_save_path = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset00\\dataset00.GML"
-    g = HCATNetwork.graph.loadGraph(graph_save_path)
-    HCATNetwork.draw.draw2DCenterlinesGraph(g)
-    HCATNetwork.draw.draw3DCenterlinesGraph(g)
+    g = hcatnetwork.graph.loadGraph(graph_save_path)
+    hcatnetwork.draw.draw2DCenterlinesGraph(g)
+    hcatnetwork.draw.draw3DCenterlinesGraph(g)

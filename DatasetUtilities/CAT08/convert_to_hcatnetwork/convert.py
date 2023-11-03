@@ -2,8 +2,9 @@ import os, sys
 import numpy
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
-import networkx, HCATNetwork
-import DatasetUtilities.CAT08.convert_to_hcatnetwork.utils08 as util
+import networkx
+import hcatnetwork
+import DatasetUtilities.CAT08.convert_to_hcatnetwork.convert_utils as util
 
 """How does this script work:
 This script works in two modes, decided by setting the flag "OPTION_EXPLORE_CENTERLINE".
@@ -14,14 +15,16 @@ OPTION_EXPLORE_CENTERLINE = True:
     or from intersection to intersection.
 OPTION_EXPLORE_CENTERLINE = False:
     Given the segments info obtained in the previous step, and saved in the format explained below,
-    the centerline graph is created and saved using the CATNetwork (https://github.com/AAMIASoftwares-research/HCATNetwork) + NetworkX packages.
+    the centerline graph is created and saved using the HCATNetwork (https://github.com/AAMIASoftwares-research/HCATNetwork), based on NetworkX.
 """
 OPTION_EXPLORE_CENTERLINE = 0
 
 IM_NUMBER = 0 # accepted 0 to 7
 IM_NUMBER = int(IM_NUMBER)
 
-POINTS_TARGET_SPACING = 0.03 # mm -> each point of the graph will be, more or less, 0.3 mm apart
+# Respacing of the graph - this is the original mean respacing described in the paper
+POINTS_TARGET_SPACING = 0.03 # mm -> each point of the graph will be, more or less, 0.03 mm apart
+
 
 CAT08_IM_folder = os.path.normpath(
     f"C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset{IM_NUMBER:02d}\\"
@@ -264,19 +267,16 @@ if __name__ == "__main__":
     # Now, just stitch the segments together
     # following the connection lists in a graph
     print("Building the graph...")
-    g_dict = HCATNetwork.graph.BasicCenterlineGraph(
-        **{
-            "image_id": f"CAT08/dataset{IM_NUMBER:02d}",
-            "are_left_right_disjointed": True
-        }
-    )
-    graph_bcg = networkx.Graph(**g_dict)
+    g_dict = hcatnetwork.graph.SimpleCenterlineGraphAttributes()
+    g_dict["image_id"] = f"CAT08/dataset{IM_NUMBER:02d}"
+    g_dict["are_left_right_disjointed"] = True
+    graph_bcg = hcatnetwork.graph.SimpleCenterlineGraph(g_dict)
     # t1 - RCA
     util.buildAndConnectGraph(
         graph_bcg,
         t1_final_segments_tuples_list,
         centerlines_cat_conn,
-        tree_class=HCATNetwork.node.ArteryPointTree.RIGHT,
+        tree_class=hcatnetwork.node.ArteryNodeSide.RIGHT,
         graph_nodes_target_spacing_mm=POINTS_TARGET_SPACING
     )
     print(" RCA done")
@@ -285,22 +285,46 @@ if __name__ == "__main__":
         graph_bcg,
         t2_final_segments_tuples_list,
         centerlines_cat_conn,
-        tree_class=HCATNetwork.node.ArteryPointTree.LEFT,
+        tree_class=hcatnetwork.node.ArteryNodeSide.LEFT,
         graph_nodes_target_spacing_mm=POINTS_TARGET_SPACING
     )
     print(" LCA done")
     
-    if 1:
-        HCATNetwork.draw.draw2DCenterlinesGraph(graph_bcg)
-    
-    # Save the graph to file
-    graph_save_path = f"C:\\Users\\lecca\\Desktop\\GraphsCAT08\\dataset{IM_NUMBER:02d}.GML"
-    HCATNetwork.graph.saveGraph(graph_bcg, graph_save_path)
 
-    # Load the graph from file and try plotting it again
-    graph_2 = HCATNetwork.graph.loadGraph(graph_save_path)
+
+    #######
+    # Viz
+    #######
+
     if 1:
-        HCATNetwork.draw.draw2DCenterlinesGraph(graph_2)
+        hcatnetwork.draw.draw_simple_centerlines_graph_2d(graph_bcg)
+    
+
+
+    ########################
+    # Save the graph to file
+    ########################
+
+    # original one
+    graph_save_path = f"C:\\Users\\lecca\\Desktop\\GraphsCAT08\\dataset{IM_NUMBER:02d}.GML"
+    hcatnetwork.io.save_graph(graph_bcg, graph_save_path)
+    print("saved " + graph_save_path)
+
+    # Resampled to 0.5 mm
+    graph_save_path = f"C:\\Users\\lecca\\Desktop\\GraphsCAT08\\dataset{IM_NUMBER:02d}_0.5mm.GML"
+    graph_05mm = graph_bcg.resample(mm_between_nodes=0.5)
+    hcatnetwork.io.save_graph(graph_05mm, graph_save_path)
+    print("saved " + graph_save_path)
+
+    
+
+    ###########################
+    # double-checking
+    ###########################
+
+    print("Graph types checking: \n\n")
+    graph_reloaded_05mm = hcatnetwork.io.load_graph(graph_save_path, output_type=hcatnetwork.graph.SimpleCenterlineGraph)
+    hcatnetwork.draw.draw_simple_centerlines_graph_2d(graph_reloaded_05mm)
     
     sys.exit()
 
@@ -309,6 +333,31 @@ if __name__ == "__main__":
 
 
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
     
     #######################
     #### LEGACY STUFF #####

@@ -2,4 +2,5 @@ numpy
 matplotlib
 scikit-learn
 vtk
-git+https://github.com/AAMIASoftwares-research/HCATNetwork.git
+SimpleITK
+git+https://github.com/AAMIASoftwares-research/hcatnetwork.git
