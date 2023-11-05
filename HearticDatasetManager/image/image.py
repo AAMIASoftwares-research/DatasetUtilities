@@ -8,6 +8,8 @@ import os
 from collections import UserDict
 import numpy
 
+from HearticDatasetManager.affine import transform_affine_3d
+
 class BoundingBoxDict(UserDict):
     """A dictionary that holds the bounding box of an image.
 
@@ -161,36 +163,6 @@ class ImageCT(object):
         affine[0:3, 0:3] = numpy.diag(1/self.spacing)
         affine[0:3, 3] = -self.origin/self.spacing
         return affine
-    
-    def transform_affine(self, points: numpy.ndarray, affine: numpy.ndarray):
-        # NOTE TO MYSELF:
-        # THIS METHOD SHOULD NOT STAY HERE. wOULD BE BETTER TO CREATE A
-        # MODULE, DETACHED FROM ANYTHNG ELSE, TO DO THE WORK
-        # hOWEVER, IT MAY BE OVERKILL, SO I'LL KEEP IT HERE FOR NOW. 
-        """Transform the input points with the specified affine belonging to the object instance.
-
-        Parameters
-        ----------
-        points : numpy.ndarray
-            The points to transform.
-            points.shape = (3,) or (3, N) where N is the number of locations.
-
-        affine : numpy.ndarray
-            The affine transformation matrix to use.
-        """
-        # Input rejection
-        if points.ndim > 2:
-            raise ValueError(f"Data must be a 2D array or a (x,y,z) array. Got {points.ndim}D array.")
-        if len(points.shape) == 1:
-            points = points.reshape(points.shape[0],1)
-        if points.shape[0] != 3:
-            raise ValueError(f"Data must have 3 rows. Got {points.shape[0]} rows.")
-        if affine.shape != (4,4):
-            raise ValueError(f"Affine must be a 4x4 matrix. Got {affine.shape} matrix.")
-        # Transform
-        points = numpy.vstack((points, numpy.ones(points.shape[1])))
-        points = numpy.matmul(affine, points)
-        return points[0:3, :]
 
     def sample(self, location: numpy.ndarray, interpolation: str = "nearest"):
         """Sample the image data at specific 3D location(s).
@@ -222,7 +194,7 @@ class ImageCT(object):
             raise ValueError(f"Interpolation method {interpolation} not available. Available methods are: nearest, linear.")
         # Transform location to IJK, keeping the decimals
         location_ras = location
-        location = self.transform_affine(location, self.affine_ras2ijk)
+        location = transform_affine_3d(self.affine_ras2ijk, location)
         # Allocate output memory - locations outside the image will be set to the minimum of the image
         output = numpy.ones(location.shape[1]) * numpy.min(self.data)
         # check wgich input locations are inside the bbox

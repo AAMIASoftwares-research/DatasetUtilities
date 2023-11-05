@@ -1,0 +1,133 @@
+"""Utilities for affine transformations.
+
+One day it will be a standalone module maybe. ---------------------------
+"""
+import numpy
+
+# ############################
+# BASIC AFFINE TRANSFORMATIONS
+# ############################
+
+def get_affine_translation(translation: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
+    """Get the affine matrix for a translation.
+
+    Parameters
+    ----------
+    translation : numpy.ndarray
+        A 3D vector of the translation.
+    """
+    affine = numpy.eye(4)
+    affine[0:3, 3] = translation
+    return affine
+
+def get_affine_3d_rotation_around_axis(rotation: float, axis_of_rotation: numpy.ndarray, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
+    """Get the rotation matrix for a 3D rotation around an axis.
+
+    Parameters
+    ----------
+    rotation : float
+        The angle of rotation (in radians by default).
+    axis_of_rotation : numpy.ndarray
+        A 3D (unit) vector describing the axis of rotation.
+    rotation_units : str, optional
+        The units of rotation. Either "rad" or "deg".
+        Defaults to "rad".
+    """
+    # Convert to radians if necessary
+    if rotation_units == "deg":
+        rotation = numpy.deg2rad(rotation)
+    # Transform to unit vector
+    if numpy.linalg.norm(axis_of_rotation) == 0:
+        raise ValueError("Axis of rotation cannot be zero vector.")
+    axis_of_rotation /= numpy.linalg.norm(axis_of_rotation)
+    # Make matrix
+    x = axis_of_rotation[0]
+    y = axis_of_rotation[1]
+    z = axis_of_rotation[2]
+    c = numpy.cos(rotation)
+    s = numpy.sin(rotation)
+    rotation_matrix = numpy.array([
+        [x*x*(1-c)+c,   x*y*(1-c)-z*s, x*z*(1-c)+y*s, 0.0],
+        [y*x*(1-c)+z*s,   y*y*(1-c)+c, y*z*(1-c)-x*s, 0.0],
+        [z*x*(1-c)-y*s, z*y*(1-c)+x*s,   z*z*(1-c)+c, 0.0],
+        [          0.0,           0.0,           0.0, 1.0]
+    ])
+    
+
+def get_affine_3d_rotation_around_vector(rotation: float, vector: numpy.ndarray, vector_source: numpy.ndarray, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
+    """Get the rotation matrix for a 3D rotation.
+
+    Parameters
+    ----------
+    rotation : float
+        The angle of rotation around the vector (in radians by default).
+    vector : numpy.ndarray
+        A 3D vector describing the axis of rotation.
+    vector_source : numpy.ndarray
+        A 3D vector describing the point source of the vector.
+    rotation_units : str, optional
+        The units of rotation. Either "rad" or "deg".
+        Defaults to "rad".
+    """
+    # Convert to radians if necessary
+    if rotation_units == "deg":
+        rotation = numpy.deg2rad(rotation)
+    # Transform to unit vector
+    if numpy.linalg.norm(vector) == 0:
+        raise ValueError("Parameter vector cannot be zero vector.")
+    vector /= numpy.linalg.norm(vector)
+    # Translate to origin from center of rotation
+    translation_matrix = get_affine_translation(-vector_source)
+    # Rotate around the axis
+    rotation_matrix = get_affine_3d_rotation_around_axis(rotation, vector)
+    # Translate back to center of rotation
+    translation_matrix2 = get_affine_translation(vector_source)
+    # Combine
+    final_affine = numpy.matmul(numpy.matmul(translation_matrix2, rotation_matrix), translation_matrix)
+    return final_affine
+
+
+# ########################
+# UTILITY TO APPLY AFFINES
+# ########################
+
+
+def transform_affine_3d(affine: numpy.ndarray, points: numpy.ndarray) -> numpy.ndarray:
+    """Transform the input points with the specified affine.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        The points to transform.
+        points.shape = (3,) or (3, N) where N is the number of locations.
+        If points.shape = (N,3) with N = {1,2,>3} then it will be transposed automatically.
+
+    affine : numpy.ndarray
+        The affine transformation matrix to use.
+
+    Returns
+    -------
+    numpy.ndarray
+        The transformed points, in shape (3,) or (3,N), NOT (N,3).
+        To go back to (N,3), use output.T.
+    """
+    _single_point = False
+    # Input pointa rejection
+    if points.ndim > 2:
+        raise ValueError(f"Data must be a (x,y,z) array. Got {points.ndim}D array.")
+    if len(points.shape) == 1:
+        _single_point = True
+        points = points.reshape(points.shape[0],1)
+    if points.shape[1] == 3 and (points.shape[0] in [1,2] or points.shape[0] > 3):
+        # here we have an (N,3) array, so we transpose it
+        # (3,3) is not considered because it is assumed to be correct
+        points = points.T
+    if points.shape[0] != 3:
+        raise ValueError(f"Data must have 3 rows. Got {points.shape[0]} rows.")
+    # Input affine rejection
+    if affine.shape != (4,4):
+        raise ValueError(f"Affine must be a 4x4 matrix. Got {affine.shape} matrix.")
+    # Transform
+    points = numpy.vstack((points, numpy.ones(points.shape[1])))
+    points = numpy.matmul(affine, points)
+    return points[0:3, :]
