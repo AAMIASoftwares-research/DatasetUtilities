@@ -3,7 +3,7 @@ import numpy
 
 
 if __name__ == "__main__":
-    print("Running 'DatasetUtilities.utils' module")
+    print("Running 'HearticDatasetManager.utils' module")
     
     ## view a saved centerline graph
     import hcatnetwork

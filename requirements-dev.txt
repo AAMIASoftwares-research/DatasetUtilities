@@ -3,4 +3,4 @@ matplotlib
 scikit-learn
 vtk
 SimpleITK
-git+https://github.com/AAMIASoftwares-research/hcatnetwork.git
+git+https://github.com/AAMIASoftwares-research/HCATNetwork.git
