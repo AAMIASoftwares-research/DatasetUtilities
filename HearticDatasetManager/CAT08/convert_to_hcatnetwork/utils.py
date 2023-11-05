@@ -322,16 +322,16 @@ def connectGraphIntersegment(
         node_attributes.set_vertex_and_radius(p)
         node_attributes["t"] = 0.0
         if i_ == 0 and not ((seg_id == connections[:,1]).any() and not is_alone):
-            topology_class = hcatnetwork.node.ArteryNodeTopology.OSTIUM
+            topology = hcatnetwork.node.ArteryNodeTopology.OSTIUM
         elif i_ == len(p_list)-1:
             if not (seg_id == connections[:,0]).any() or is_alone:
-                topology_class = hcatnetwork.node.ArteryNodeTopology.ENDPOINT
+                topology = hcatnetwork.node.ArteryNodeTopology.ENDPOINT
             else:
-                topology_class = hcatnetwork.node.ArteryNodeTopology.INTERSECTION
+                topology = hcatnetwork.node.ArteryNodeTopology.INTERSECTION
         else:
-            topology_class = hcatnetwork.node.ArteryNodeTopology.SEGMENT
-        node_attributes["topology_class"] = topology_class
-        node_attributes["arterial_tree"] = tree
+            topology = hcatnetwork.node.ArteryNodeTopology.SEGMENT
+        node_attributes["topology"] = topology
+        node_attributes["side"] = tree
         graph.add_node(str(node_idx_int), **node_attributes)
         end_node_id_int = node_idx_int
         node_idx_int += 1
@@ -350,7 +350,7 @@ def connectGraphIntersegment(
         for n in graph.nodes:
             n_scn = hcatnetwork.node.SimpleCenterlineNodeAttributes(**(graph.nodes[n]))
             pos_dict__.update(**{n: n_scn.get_vertex_list()[:2]})
-            color_list__.append(n_scn["topology_class"].value)
+            color_list__.append(n_scn["topology"].value)
         hcatnetwork.draw.draw_simple_centerlines_graph_2d(graph, backend="networkx")
     # Out
     # note that the graph object gets modified in place, no need to return it
