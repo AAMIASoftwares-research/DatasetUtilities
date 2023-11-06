@@ -5,7 +5,7 @@ import networkx
 import hcatnetwork
 from vtkmodules.vtkIOXML import vtkXMLPolyDataReader
 
-import HearticDatasetManager.ASOCA.convert_to_hcatnetwork.utils as util
+import HearticDatasetManager.asoca.convert_to_hcatnetwork.utils as util
 
 
 def process_image_and_generate_graph(asoca_folder: str, dataset: str, im_number: int):

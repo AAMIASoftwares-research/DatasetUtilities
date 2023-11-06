@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 import networkx
 import hcatnetwork
-import HearticDatasetManager.CAT08.convert_to_hcatnetwork.utils as util
+import HearticDatasetManager.cat08.convert_to_hcatnetwork.utils as util
 
 """How does this script work:
 This script works in two modes, decided by setting the flag "OPTION_EXPLORE_CENTERLINE".
