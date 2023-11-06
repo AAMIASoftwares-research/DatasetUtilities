@@ -12,7 +12,7 @@ import numpy
 # Translation
 # #
 
-def get_affine_translation(translation: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
+def get_affine_3d_translation(translation: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
     """Get the affine matrix for a translation.
 
     Parameters
@@ -33,7 +33,7 @@ def get_affine_translation(translation: numpy.ndarray) -> numpy.ndarray(shape=(4
 # Mirror
 # #
 
-def get_affine_mirror_plane(plane_normal: numpy.ndarray, plane_normal_source: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
+def get_affine_3d_mirror_plane(plane_normal: numpy.ndarray, plane_normal_source: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
     """Get the affine matrix for a mirroring with respect to q plane.
     
     Parameters
@@ -55,12 +55,12 @@ def get_affine_mirror_plane(plane_normal: numpy.ndarray, plane_normal_source: nu
         raise ValueError("Plane normal cannot be zero vector.")
     plane_normal /= numpy.linalg.norm(plane_normal)
     # Translate to origin from center of rotation
-    translation_matrix = get_affine_translation(-plane_normal_source)
+    translation_matrix = get_affine_3d_translation(-plane_normal_source)
     # Mirror
     mirror_matrix = numpy.eye(4)
     mirror_matrix[0:3, 0:3] -= 2 * numpy.outer(plane_normal, plane_normal)
     # Translate back to center of rotation
-    translation_matrix2 = get_affine_translation(plane_normal_source)
+    translation_matrix2 = get_affine_3d_translation(plane_normal_source)
     # Combine
     final_affine = numpy.matmul(numpy.matmul(translation_matrix2, mirror_matrix), translation_matrix)
     return final_affine
@@ -94,7 +94,7 @@ def get_affine_3d_scale(scale: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
 # Rotation
 # #
 
-def get_affine_3d_rotation_around_axis(rotation: float, axis_of_rotation: numpy.ndarray, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
+def get_affine_3d_rotation_around_axis(axis_of_rotation: numpy.ndarray, rotation: float, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
     """Get the rotation matrix for a 3D rotation around an axis that passes through the origin.
 
     Parameters
@@ -131,9 +131,10 @@ def get_affine_3d_rotation_around_axis(rotation: float, axis_of_rotation: numpy.
         [z*x*(1-c)-y*s, z*y*(1-c)+x*s,   z*z*(1-c)+c, 0.0],
         [          0.0,           0.0,           0.0, 1.0]
     ])
+    return rotation_matrix
     
 
-def get_affine_3d_rotation_around_vector(rotation: float, vector: numpy.ndarray, vector_source: numpy.ndarray, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
+def get_affine_3d_rotation_around_vector(vector: numpy.ndarray, vector_source: numpy.ndarray, rotation: float, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
     """Get the rotation matrix for a 3D rotation.
 
     Parameters
@@ -161,11 +162,11 @@ def get_affine_3d_rotation_around_vector(rotation: float, vector: numpy.ndarray,
         raise ValueError("Parameter vector cannot be zero vector.")
     vector /= numpy.linalg.norm(vector)
     # Translate to origin from center of rotation
-    translation_matrix = get_affine_translation(-vector_source)
+    translation_matrix = get_affine_3d_translation(-vector_source)
     # Rotate around the axis
-    rotation_matrix = get_affine_3d_rotation_around_axis(rotation, vector)
+    rotation_matrix = get_affine_3d_rotation_around_axis(vector, rotation)
     # Translate back to center of rotation
-    translation_matrix2 = get_affine_translation(vector_source)
+    translation_matrix2 = get_affine_3d_translation(vector_source)
     # Combine
     final_affine = numpy.matmul(numpy.matmul(translation_matrix2, rotation_matrix), translation_matrix)
     return final_affine
@@ -175,8 +176,38 @@ def get_affine_3d_rotation_around_vector(rotation: float, vector: numpy.ndarray,
 # UTILITY TO APPLY AFFINES
 # ########################
 
+def compose_affines(affines: list[numpy.ndarray]) -> numpy.ndarray:
+    """Composes affines to be applied in sequence.
 
-def transform_affine_3d(affine: numpy.ndarray, points: numpy.ndarray) -> numpy.ndarray:
+    Given a list of [affine1, affine2, ..., affineN], this function
+    will return the affine that is equivalent to applying the
+    affines in the list in sequence, starting from affine1.
+
+    y = affineN * ... * affine2 * affine1 * x
+    
+    y = affineN * ( ... ( affine2 * ( affine1 * x ) ) )
+
+    Parameters
+    ----------
+    affines : list
+        A list of affines to be applied in sequence.
+    
+    Returns
+    -------
+    numpy.ndarray
+        The composed affine.
+    """
+    # Check input
+    if len(affines) == 0:
+        raise ValueError("List of affines cannot be empty.")
+    # Compose
+    # composition starts from the last one as the most internal one
+    final_affine = affines[-1]
+    for affine in affines[-2::-1]:
+        final_affine = numpy.matmul(final_affine, affine)
+    return final_affine
+
+def apply_affine_3d(affine: numpy.ndarray, points: numpy.ndarray) -> numpy.ndarray:
     """Transform the input points with the specified affine.
 
     Parameters

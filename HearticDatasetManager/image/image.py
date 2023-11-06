@@ -8,7 +8,9 @@ import os
 from collections import UserDict
 import numpy
 
-from HearticDatasetManager.affine import transform_affine_3d
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
+
+from HearticDatasetManager.affine import compose_affines, apply_affine_3d
 
 class BoundingBoxDict(UserDict):
     """A dictionary that holds the bounding box of an image.
@@ -39,15 +41,46 @@ class BoundingBoxDict(UserDict):
             location = location.reshape(location.shape[0],1)
         if location.shape[0] != 3:
             raise ValueError(f"Data must have 3 rows. Got {location.shape[0]} rows.")
+        # Allocate output
+        inside = numpy.ones(location.shape[1], dtype=bool)
         # Check
         lower = self.data["lower"]
         upper = self.data["upper"]
-        inside = numpy.logical_and.reduce((lower[0] <= location[:,0], location[:,0] <= upper[0],
-                                            lower[1] <= location[:,1], location[:,1] <= upper[1],
-                                            lower[2] <= location[:,2], location[:,2] <= upper[2]))
+        inside[:] = numpy.logical_and(inside, lower[0] < location[0,:])
+        inside[:] = numpy.logical_and(inside, location[0,:] < upper[0])
+        inside[:] = numpy.logical_and(inside, lower[1] < location[1,:])
+        inside[:] = numpy.logical_and(inside, location[1,:] < upper[1])
+        inside[:] = numpy.logical_and(inside, lower[2] < location[2,:])
+        inside[:] = numpy.logical_and(inside, location[2,:] < upper[2])
         return inside
 
-
+    def get_artist(self):
+        """Get a matplotlib.collections.LineCollection artist to plot the bounding box.
+        """
+        lower = self.data["lower"]
+        upper = self.data["upper"]
+        lines = [
+            [(lower[0], lower[1], lower[2]), (upper[0], lower[1], lower[2])],
+            [(lower[0], lower[1], lower[2]), (lower[0], upper[1], lower[2])],
+            [(lower[0], lower[1], lower[2]), (lower[0], lower[1], upper[2])],
+            [(upper[0], upper[1], upper[2]), (lower[0], upper[1], upper[2])],
+            [(upper[0], upper[1], upper[2]), (upper[0], lower[1], upper[2])],
+            [(upper[0], upper[1], upper[2]), (upper[0], upper[1], lower[2])],
+            [(lower[0], upper[1], upper[2]), (lower[0], lower[1], upper[2])],
+            [(lower[0], upper[1], upper[2]), (lower[0], upper[1], lower[2])],
+            [(upper[0], lower[1], upper[2]), (lower[0], lower[1], upper[2])],
+            [(upper[0], lower[1], upper[2]), (upper[0], lower[1], lower[2])],
+            [(upper[0], lower[1], lower[2]), (lower[0], lower[1], lower[2])],
+            [(upper[0], lower[1], lower[2]), (upper[0], upper[1], lower[2])],
+        ]
+        collection = Line3DCollection(
+            lines,
+            color="fuchsia",
+            linestyle="--",
+            linewidth=0.7,
+            alpha=0.8
+        )
+        return collection
 
     def __repr__(self):
         return f"BoundingBoxDict({self.data['lower']}, {self.data['upper']})"
@@ -90,35 +123,46 @@ class ImageCT(object):
     Attributes
     ----------
     name : str
-        Name of the image.
+        A unique identifier for the image.
+        This could be a filename, a URI, a DICOM SOP Instance UID,
+        or some other unique identifier.
     data : numpy.ndarray
         The image data, a (X x Y x Z) array in int16 format.
         Hounsfield units are stored in the image data.
+    shape : tuple
+        The shape of the image data.
     origin : numpy.ndarray
         The origin of the image in RAS coordinates (x,y,z).
-        millimeters coordinates are stored in the origin.
+        The physical world coordinates of the first voxel in the
+        image data in millimeters units.
     spacing : numpy.ndarray
         The spacing of the image in RAS coordinates (x,y,z).
-        millimeters coordinates are stored in the spacing.
+        The physical distance between voxels in each dimension
+        in millimeters units.
     bounding_box : BoundingBoxDict
         The bounding box of the image in RAS coordinates.
-        millimeters coordinates are stored in the bounding box.
+        Lower and upper coordinates are stored in the bounding box in mm units.
+        Does not take into account the orientation of the image.
+    affine_ijk2ras_direction : numpy.ndarray
+        The diagonal matrix for IJK <-> RAS direction.
     affine_ijk2ras : numpy.ndarray
-        The affine transformation matrix from IJK of the numpy.ndarray data to RAS coordinates.
+        The affine transformation matrix from IJK of the image data to RAS coordinates.
+        This matrix encapsulates the origin, spacing, and orientation.
     affine_ras2ijk : numpy.ndarray
         The affine transformation matrix from RAS coordinates to IJK of the numpy.ndarray data.
     """
-    name: str # Name of the image
-    data: numpy.ndarray(dtype=numpy.int16) # dimensions: (x, y, z) in RAS coordinate system
-    origin: numpy.ndarray # dimensions: (x, y, z) in RAS coordinate system
-    spacing: numpy.ndarray # dimensions: (x, y, z) in RAS coordinate system
-    bounding_box: BoundingBoxDict # {"lower": numpy.ndarray, "upper": numpy.ndarray} in RAS coordinate system
+    name: str
+    data: numpy.ndarray
+    shape: tuple
+    origin: numpy.ndarray
+    spacing: numpy.ndarray
+    bounding_box: BoundingBoxDict
     # Affine Transformations
-    affine_ijk2ras: numpy.ndarray # 4x4 affine transformation matrix from IJK to RAS
-    affine_ras2ijk: numpy.ndarray # 4x4 affine transformation matrix from RAS to IJK
+    affine_ijk2ras_direction: numpy.ndarray
+    affine_ijk2ras: numpy.ndarray
+    affine_ras2ijk: numpy.ndarray
 
-
-    def __init__(self, name:str, data:numpy.ndarray, origin:numpy.ndarray, spacing:numpy.ndarray):
+    def __init__(self, name:str, data:numpy.ndarray, origin:numpy.ndarray, spacing:numpy.ndarray, affine_ijk2ras_direction:numpy.ndarray=numpy.eye(4)):
         """Initialize the ImageCT object.
         
         Parameters
@@ -131,29 +175,42 @@ class ImageCT(object):
             The origin of the image in RAS coordinates (x,y,z), millimeters.
         spacing : numpy.ndarray
             The spacing of the image in RAS coordinates (x,y,z), millimeters.
+        affine_ijk2ras_direction : numpy.ndarray, optional
+            The diagonal matrix for IJK <-> RAS direction. Default is numpy.eye(4).
         """
         self.name = name
         self.data = data.astype(numpy.int16) if data.dtype != numpy.int16 else data
+        self.shape = data.shape
         self.origin = origin.flatten()
         self.spacing = spacing.flatten()
-        self.bounding_box = self._set_bounding_box()
         # Affine Transformations
+        self.affine_ijk2ras_direction = affine_ijk2ras_direction
         self.affine_ijk2ras = self._set_affine_ijk2ras()
         self.affine_ras2ijk = self._set_affine_ras2ijk()
+        # Bounding box
+        self.bounding_box = self._set_bounding_box()
 
     def _set_bounding_box(self):
         """Set the bounding box of the image in RAS coordinates.
         """
-        lower = self.origin
-        upper = self.origin + self.spacing * self.data.shape
-        return BoundingBoxDict(lower, upper)
+        low_ijk = numpy.zeros(shape=(3,))
+        high_ijk = numpy.array(self.shape)-1
+        # Transform to RAS
+        low_ras = apply_affine_3d(self.affine_ijk2ras, low_ijk.T).T
+        high_ras = apply_affine_3d(self.affine_ijk2ras, high_ijk.T).T
+        # See which is lower and which is upper
+        vs = numpy.vstack((low_ras, high_ras))
+        lower_new = numpy.min(vs, axis=0)
+        upper_new = numpy.max(vs, axis=0)
+        return BoundingBoxDict(lower_new, upper_new)
     
     def _set_affine_ijk2ras(self):
         """Set the affine transformation matrix from IJK to RAS coordinates.
         """
         affine = numpy.eye(4)
         affine[0:3, 0:3] = numpy.diag(self.spacing)
-        affine[0:3, 3] = self.origin
+        affine[0:3, 3] = apply_affine_3d(self.affine_ijk2ras_direction, self.origin.T).T # no idea why here it works like this
+        affine = compose_affines([affine, self.affine_ijk2ras_direction]) # here order is not important
         return affine
     
     def _set_affine_ras2ijk(self):
@@ -161,8 +218,46 @@ class ImageCT(object):
         """
         affine = numpy.eye(4)
         affine[0:3, 0:3] = numpy.diag(1/self.spacing)
-        affine[0:3, 3] = -self.origin/self.spacing
+        affine[0:3, 3] = -self.origin/self.spacing # no idea why now i do not have to transform the origin while before in _set_affine_ijk2ras i had to
+        affine = compose_affines([affine, self.affine_ijk2ras_direction]) # here order is not important
         return affine
+
+    def get_data_coordinates_grid(self):
+        """Returns a numpy.ndarray of the same shape of data+1, where
+        the last dimension is either 0, 1 or 2 and corresponds to the
+        physical x, y, and z of the voxel, and 3 to the value in the image data.
+
+        Returns
+        -------
+        numpy.ndarray
+            The coordinates grid in a (shape_x, shape_y, shape_z, 4) array. 
+        """
+        # i,j,k vector to be transformed int RAS
+        num_voxels = numpy.prod(self.shape)
+        ijk_vector = numpy.zeros(
+            shape=(3, num_voxels),
+        )
+        c_ = 0
+        for i in range(self.shape[0]):
+            for j in range(self.shape[1]):
+                for k in range(self.shape[2]):
+                    ijk_vector[:, c_] = numpy.array([i, j, k])
+                    c_ += 1
+        # Transform to RAS
+        ras_coords = numpy.zeros(
+            shape=(self.shape[0], self.shape[1], self.shape[2], 3),
+            dtype=numpy.float32
+        )
+        ras_vector = apply_affine_3d(self.affine_ijk2ras, ijk_vector)
+        c_ = 0
+        for i in range(self.shape[0]):
+            for j in range(self.shape[1]):
+                for k in range(self.shape[2]):
+                    ras_coords[i, j, k, :] = ras_vector[:, c_]
+                    ras_coords[i, j, k, 3] = float(self.data[i, j, k])
+                    c_ += 1
+        return ras_coords
+
 
     def sample(self, location: numpy.ndarray, interpolation: str = "nearest"):
         """Sample the image data at specific 3D location(s).
@@ -194,25 +289,39 @@ class ImageCT(object):
             raise ValueError(f"Interpolation method {interpolation} not available. Available methods are: nearest, linear.")
         # Transform location to IJK, keeping the decimals
         location_ras = location
-        location = transform_affine_3d(self.affine_ras2ijk, location)
+        location = apply_affine_3d(self.affine_ras2ijk, location)
         # Allocate output memory - locations outside the image will be set to the minimum of the image
         output = numpy.ones(location.shape[1]) * numpy.min(self.data)
         # check wgich input locations are inside the bbox
         input_inside = self.bounding_box.contains(location_ras)
         # Sample
         if interpolation == "nearest":
-            location = numpy.round(location).astype(numpy.int)
+            location = numpy.round(location).astype("int")
             # we have to cycle to keep in consideration the data that are outside the image
             for i in range(location.shape[1]):
                 if not input_inside[i]:
                     continue
+                if location[0,i] < 0 or location[0,i] >= self.shape[0]:
+                    continue
+                if location[1,i] < 0 or location[1,i] >= self.shape[1]:
+                    continue
+                if location[2,i] < 0 or location[2,i] >= self.shape[2]:
+                    continue
                 output[i] = self.data[location[0,i], location[1,i], location[2,i]]
         elif interpolation == "linear":
-            location_floor = numpy.floor(location).astype(numpy.int)
-            location_ceil = numpy.ceil(location).astype(numpy.int)
+            location_floor = numpy.floor(location).astype("int")
+            location_ceil = numpy.ceil(location).astype("int")
             location_floor_percent = (location-location_floor)/(location_ceil-location_floor)
             for i in range(location.shape[1]):
                 if not input_inside[i]:
+                    continue
+                if not input_inside[i]:
+                    continue
+                if location[0,i] < 0 or location[0,i] >= self.shape[0]:
+                    continue
+                if location[1,i] < 0 or location[1,i] >= self.shape[1]:
+                    continue
+                if location[2,i] < 0 or location[2,i] >= self.shape[2]:
                     continue
                 v_000 = self.data[location_floor[0,i], location_floor[1,i], location_floor[2,i]] # 0,0,0
                 w_000 = location_floor_percent[0,i] * location_floor_percent[1,i] * location_floor_percent[2,i]
@@ -234,6 +343,7 @@ class ImageCT(object):
         # Out
         if output.shape[0] == 1:
             return output[0]
+        return output
 
 
     def __repr__(self):
