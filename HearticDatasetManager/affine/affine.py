@@ -8,6 +8,10 @@ import numpy
 # BASIC AFFINE TRANSFORMATIONS
 # ############################
 
+# #
+# Translation
+# #
+
 def get_affine_translation(translation: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
     """Get the affine matrix for a translation.
 
@@ -15,13 +19,83 @@ def get_affine_translation(translation: numpy.ndarray) -> numpy.ndarray(shape=(4
     ----------
     translation : numpy.ndarray
         A 3D vector of the translation.
+    
+    Returns
+    -------
+    numpy.ndarray
+        The affine matrix for the translation.
     """
     affine = numpy.eye(4)
     affine[0:3, 3] = translation
     return affine
 
+# #
+# Mirror
+# #
+
+def get_affine_mirror_plane(plane_normal: numpy.ndarray, plane_normal_source: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
+    """Get the affine matrix for a mirroring with respect to q plane.
+    
+    Parameters
+    ----------
+    plane_normal : numpy.ndarray
+        A 3D (unit) vector describing the normal of the plane.
+    plane_normal_source : numpy.ndarray
+        A 3D vector describing the point source of the normal.
+        The plane will therefore pass through this point and 
+        be orthogonal to the normal.
+
+    Returns
+    -------
+    numpy.ndarray
+        The affine matrix for the mirroring.
+    """
+    # Transform to unit vector
+    if numpy.linalg.norm(plane_normal) == 0:
+        raise ValueError("Plane normal cannot be zero vector.")
+    plane_normal /= numpy.linalg.norm(plane_normal)
+    # Translate to origin from center of rotation
+    translation_matrix = get_affine_translation(-plane_normal_source)
+    # Mirror
+    mirror_matrix = numpy.eye(4)
+    mirror_matrix[0:3, 0:3] -= 2 * numpy.outer(plane_normal, plane_normal)
+    # Translate back to center of rotation
+    translation_matrix2 = get_affine_translation(plane_normal_source)
+    # Combine
+    final_affine = numpy.matmul(numpy.matmul(translation_matrix2, mirror_matrix), translation_matrix)
+    return final_affine
+
+
+# #
+# Scale
+# #
+
+def get_affine_3d_scale(scale: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
+    """Get the affine matrix for a 3D scaling.
+
+    Parameters
+    ----------
+    scale : numpy.ndarray
+        A 3D vector describing the scaling along each axis.
+
+    Returns
+    -------
+    numpy.ndarray
+        The affine matrix for the scaling.
+    """
+    affine = numpy.eye(4)
+    affine[0, 0] = scale[0]
+    affine[1, 1] = scale[1]
+    affine[2, 2] = scale[2]
+    return affine
+
+
+# #
+# Rotation
+# #
+
 def get_affine_3d_rotation_around_axis(rotation: float, axis_of_rotation: numpy.ndarray, rotation_units: str = "rad") -> numpy.ndarray(shape=(4, 4)):
-    """Get the rotation matrix for a 3D rotation around an axis.
+    """Get the rotation matrix for a 3D rotation around an axis that passes through the origin.
 
     Parameters
     ----------
@@ -32,6 +106,11 @@ def get_affine_3d_rotation_around_axis(rotation: float, axis_of_rotation: numpy.
     rotation_units : str, optional
         The units of rotation. Either "rad" or "deg".
         Defaults to "rad".
+
+    Returns
+    -------
+    numpy.ndarray
+        The rotation matrix.
     """
     # Convert to radians if necessary
     if rotation_units == "deg":
@@ -68,6 +147,11 @@ def get_affine_3d_rotation_around_vector(rotation: float, vector: numpy.ndarray,
     rotation_units : str, optional
         The units of rotation. Either "rad" or "deg".
         Defaults to "rad".
+
+    Returns
+    -------
+    numpy.ndarray
+        The rotation matrix.
     """
     # Convert to radians if necessary
     if rotation_units == "deg":
