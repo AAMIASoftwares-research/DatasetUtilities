@@ -54,9 +54,17 @@ class AsocaImageCT(ImageCT):
         """Load the image into the class.
         """
         # Load the image
-        image = SimpleITK.ReadImage(path)
+        image = SimpleITK.ReadImage(
+            path,
+            SimpleITK.sitkInt16    
+        )
         # Get the image array
-        image_array = SimpleITK.GetArrayFromImage(image).astype(numpy.int16)
+        image_array = SimpleITK.GetArrayFromImage(image)
+        # - While the Hounsfield units are fine for ASOCA images,
+        #   values can go down even to -3000. We could leave it like so,
+        #   but to give continuity with the other datasets for which the minimum is -1024,
+        #   (approx the HU of air), we clip all values below -1024 to -1024.
+        image_array[image_array < -1024] = -1024
         # - now, data i,j,k correspond to z or S, y or A, x or R
         # - transpose data so that you have data[i, j, k] where i->x or R, j->y or A, k->z or S
         image_array = numpy.transpose(image_array, axes=(2, 1, 0))
@@ -65,9 +73,11 @@ class AsocaImageCT(ImageCT):
         # Get the image origin
         image_origin = numpy.array(image.GetOrigin()).astype(numpy.float32).reshape((3,))
         # Get the image direction
-        # in ASOCA, the SimpleITK image direction is always the identity matrix
+        # in ASOCA, the image direction provided by SimpleITK is always the identity matrix
         # so it is basically useless. Keep the code for later reference.
         # >> image_direction = numpy.array(image.GetDirection())
+        # In Slicer, to view the image in RAS coordinates, the following direction transform
+        # is applied to the image:
         affine_ijk2ras_direction = numpy.eye(4)
         affine_ijk2ras_direction[0,0] = -1.0
         affine_ijk2ras_direction[1,1] = -1.0
@@ -99,6 +109,10 @@ class AsocaImageCT(ImageCT):
             [ 0.0,  0.0, 0.0,              1.0]
         ])
         return out_affine
+
+
+
+
 
         
 if __name__ == "__main__":
@@ -148,9 +162,30 @@ if __name__ == "__main__":
     
     plt.show()
 
-    # Histogram
-    fig = plt.figure()
-    plt.hist(image.data.flatten(), bins=500)
-    plt.show()
     
     
+
+if __name__ == "__main__" and 0:
+    # check if all datasets are scaled the same
+    import matplotlib.pyplot as plt
+    base_path = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\ASOCA"
+    from .dataset import DATASET_ASOCA_IMAGES
+
+    for im_path in DATASET_ASOCA_IMAGES:
+        im_path = os.path.join(base_path, im_path)
+        if not os.path.exists(im_path):
+            continue
+        image = AsocaImageCT(im_path)
+        if 0:
+            plt.hist(image.data.flatten(), bins=300)
+            plt.title(os.path.basename(im_path))
+            plt.show()
+        if 1:
+            # Image is shown in the contrary because
+            # the ijk mapping is different from the ras mapping
+            # >> plt.imshow(image.data[:,:,59], cmap="gray")
+            # to view it correctly on video,
+            # but wrong with respect to the matplotlib axes
+            plt.imshow(image.data[::-1,:,100].T, cmap="gray")
+            plt.show()
+    quit()

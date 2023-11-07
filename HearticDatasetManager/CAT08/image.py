@@ -4,7 +4,7 @@ import os
 import numpy
 import SimpleITK
 
-from HearticDatasetManager.affine import apply_affine_3d, get_affine_3d_translation, get_affine_3d_scale
+from HearticDatasetManager.affine import apply_affine_3d
 from HearticDatasetManager.image.image import ImageCT
 
 
@@ -70,9 +70,16 @@ class Cat08ImageCT(ImageCT):
         """Load the image into the class.
         """
         # Load the image
-        image = SimpleITK.ReadImage(path)
+        # MedPy uses ITK for .mhd/.raw files too
+        image = SimpleITK.ReadImage(
+            path,
+            SimpleITK.sitkInt16    
+        )
         # Get the image array
-        image_array = SimpleITK.GetArrayFromImage(image).astype(numpy.int16)
+        image_array = SimpleITK.GetArrayFromImage(image)
+        # - since all the images have 0 as a minimum value, this means that the actual
+        #   Hounsfield units values are shifted upward  by 1024. Bring it back to correct values.
+        image_array -= 1024
         # - now, data i,j,k correspond to z or S, y or A, x or R
         # - transpose data so that you have data[i, j, k] where i->x or R, j->y or A, k->z or S
         image_array = numpy.transpose(image_array, axes=(2, 1, 0))
@@ -81,9 +88,11 @@ class Cat08ImageCT(ImageCT):
         # Get the image origin
         image_origin = numpy.array(image.GetOrigin()).astype(numpy.float32).reshape((3,))
         # Get the image direction
-        # in CAT08, the image direction is always the identity matrix
+        # in CAT08, the image direction provided by SimpleITK is always the identity matrix
         # so it is basically useless. Keep the code for later reference.
         # >> image_direction = numpy.array(image.GetDirection())
+        # In Slicer, to view the image in RAS coordinates, the following direction transform
+        # is applied to the image:
         affine_ijk2ras_direction = numpy.eye(4)
         affine_ijk2ras_direction[0,0] = -1.0
         affine_ijk2ras_direction[1,1] = -1.0
@@ -116,13 +125,21 @@ class Cat08ImageCT(ImageCT):
         ])
         return out_affine
 
-        
+
+
+
+
+
+
 if __name__ == "__main__":
     # Example usage
-    image_path = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\dataset02\\image02.raw"
+    import matplotlib.pyplot as plt
+    from .dataset import DATASET_CAT08_IMAGES
+    base_path = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08"
+    image_path = os.path.join(base_path, DATASET_CAT08_IMAGES[0])
+    
     image = Cat08ImageCT(image_path)
 
-    import matplotlib.pyplot as plt
     fig = plt.figure()
     fig.set_facecolor("#010238")
     ax = fig.add_subplot(111, projection='3d')
@@ -160,12 +177,29 @@ if __name__ == "__main__":
         antialiased=False
     )
     plt.show()
+    
+    
+if __name__ == "__main__" and 0:
+    # check if all datasets are scaled the same
+    import matplotlib.pyplot as plt
+    base_path = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08"
+    from .dataset import DATASET_CAT08_IMAGES
 
-    
-
-    # Histogram
-    fig = plt.figure()
-    plt.hist(image.data.flatten(), bins=500)
-    plt.show()
-    
-    
+    for im_path in DATASET_CAT08_IMAGES:
+        im_path = os.path.join(base_path, im_path)
+        if not os.path.exists(im_path):
+            continue
+        image = Cat08ImageCT(im_path)
+        if 0:
+            plt.hist(image.data.flatten(), bins=300)
+            plt.title(os.path.basename(im_path))
+            plt.show()
+        if 0:
+            # Image is shown in the contrary because
+            # the ijk mapping is different from the ras mapping
+            # >> plt.imshow(image.data[:,:,59], cmap="gray")
+            # to view it correctly on video,
+            # but wrong with respect to the matplotlib axes
+            plt.imshow(image.data[::-1,:,100].T, cmap="gray")
+            plt.show()
+    quit()
