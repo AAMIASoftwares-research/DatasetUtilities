@@ -139,7 +139,7 @@ DATASET_ASOCA_GRAPHS_DICT = {
 }
 
 DATASET_ASOCA_GRAPHS_RESAMPLED_05MM = [
-    n.replace(".GML", "._0.5mm.GML") if n.find("._0.5mm.GML") != -1 else n for n in DATASET_ASOCA_GRAPHS
+    n.replace(".GML", "_0.5mm.GML") if n.find("_0.5mm.GML") == -1 else n for n in DATASET_ASOCA_GRAPHS
 ]
 
 DATASET_ASOCA_GRAPHS_RESAMPLED_05MM_DICT = {

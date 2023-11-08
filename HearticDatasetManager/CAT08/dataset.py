@@ -55,5 +55,5 @@ DATASET_CAT08_GRAPHS = [
 ]
 
 DATASET_CAT08_GRAPHS_RESAMPLED_05MM = [
-    n.replace(".GML", "._0.5mm.GML") if n.find("._0.5mm.GML") != -1 else n for n in DATASET_CAT08_GRAPHS
+    n.replace(".GML", "_0.5mm.GML") if n.find("_0.5mm.GML") == -1 else n for n in DATASET_CAT08_GRAPHS
 ]
