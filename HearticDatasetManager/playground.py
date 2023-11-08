@@ -32,15 +32,14 @@ if __name__ == "__main__":
     )
     hcatnetwork.draw.draw_simple_centerlines_graph_2d(g)
 
-    # View in in slicer
+    # View in slicer
     from .asoca.dataset import DATASET_ASOCA_IMAGES_DICT
     from .asoca.image import AsocaImageCT
-    folder = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\Data\\ASOCA\\".replace("\\", "/")
+    folder = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\ASOCA\\".replace("\\", "/")
     file = os.path.join(
         folder,
-        DATASET_ASOCA_IMAGES_DICT["Normal"][4]
+        DATASET_ASOCA_IMAGES_DICT["Normal"][0]
     )
-    quit()
     image = AsocaImageCT(file)
     save_folder = "C:\\users\\lecca\\desktop\\slicer_examples_asoca_normal_3\\".replace("\\", "/")
     hcatnetwork.utils.slicer.convert_graph_to_3dslicer_fiducials(
@@ -83,12 +82,21 @@ if __name__ == "__main__":
             points_to_sample.append([x, y, z_ras])
     points_to_sample = numpy.array(points_to_sample)
     from .affine import apply_affine_3d, get_affine_3d_rotation_around_vector
-    if 0:
+    if 1:
         A = get_affine_3d_rotation_around_vector(
             numpy.array([0, 0, 1]),
+            numpy.array([-50, -50, image.origin[2]]),
             numpy.pi/6
         )
-        points_to_sample = apply_affine_3d(points_to_sample.T, A).T
+        ax.plot(
+            [-50, -50],
+            [-50, -50],
+            [image.origin[2], image.origin[2]+50],
+            c="r",
+            linewidth=1,
+            zorder=100
+        )
+        points_to_sample = apply_affine_3d(A, points_to_sample.T).T
     samples = image.sample(points_to_sample.T, interpolation="linear")
     ax.scatter(
         points_to_sample[:,0],
@@ -100,7 +108,7 @@ if __name__ == "__main__":
         linewidths=0.0,
         antialiased=False
     )
-    
     plt.show()
+
 
 

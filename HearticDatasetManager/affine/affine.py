@@ -51,6 +51,8 @@ def get_affine_3d_mirror_plane(plane_normal: numpy.ndarray, plane_normal_source:
         The affine matrix for the mirroring.
     """
     # Transform to unit vector
+    plane_normal = plane_normal.astype(numpy.float32)
+    plane_normal_source = plane_normal_source.astype(numpy.float32)
     if numpy.linalg.norm(plane_normal) == 0:
         raise ValueError("Plane normal cannot be zero vector.")
     plane_normal /= numpy.linalg.norm(plane_normal)
@@ -116,6 +118,7 @@ def get_affine_3d_rotation_around_axis(axis_of_rotation: numpy.ndarray, rotation
     if rotation_units == "deg":
         rotation = numpy.deg2rad(rotation)
     # Transform to unit vector
+    axis_of_rotation = axis_of_rotation.astype(numpy.float32)
     if numpy.linalg.norm(axis_of_rotation) == 0:
         raise ValueError("Axis of rotation cannot be zero vector.")
     axis_of_rotation /= numpy.linalg.norm(axis_of_rotation)
@@ -158,6 +161,8 @@ def get_affine_3d_rotation_around_vector(vector: numpy.ndarray, vector_source: n
     if rotation_units == "deg":
         rotation = numpy.deg2rad(rotation)
     # Transform to unit vector
+    vector = vector.astype(numpy.float32)
+    vector_source = vector_source.astype(numpy.float32) 
     if numpy.linalg.norm(vector) == 0:
         raise ValueError("Parameter vector cannot be zero vector.")
     vector /= numpy.linalg.norm(vector)

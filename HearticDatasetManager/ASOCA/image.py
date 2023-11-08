@@ -42,7 +42,7 @@ class AsocaImageCT(ImageCT):
         if os.path.isfile(path) and path.endswith(".nrrd"):
             return path
         else:
-            raise ValueError("The path is not a recognized .nrrd file.")
+            raise ValueError(f"The path is not a recognized .nrrd file or it cannot be found:\n{path}")
         
 
     def _get_image_name(self, path: str) -> str:
