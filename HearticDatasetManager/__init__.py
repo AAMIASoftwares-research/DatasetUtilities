@@ -16,5 +16,5 @@ while other datasets we are working on are:
 
 """
 
-from . import cat08, asoca
-__all__ = ['cat08', 'asoca']
+from . import cat08, asoca, affine
+__all__ = ['cat08', 'asoca', "affine"]
