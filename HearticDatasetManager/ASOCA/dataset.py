@@ -1,12 +1,6 @@
 """Here are stored the standard names of all the datasets.
 """
-###########
-###########
-############
-###
-
-# REDO FOR ASOCA, BUT KEEP THE SAME IDEA AND NAMES
-# USE DICTIONARIES ALSO
+import os
 
 
 
@@ -74,6 +68,8 @@ DATASET_ASOCA_IMAGES = [
     "Diseased/Testset_Diseased/19.nrrd"
 ]
 
+DATASET_ASOCA_IMAGES = [os.path.normpath(n) for n in DATASET_ASOCA_IMAGES]
+
 DATASET_ASOCA_IMAGES_DICT = {
     "Normal": DATASET_ASOCA_IMAGES[:20],
     "Normal Test": DATASET_ASOCA_IMAGES[20:30],
@@ -132,6 +128,7 @@ DATASET_ASOCA_GRAPHS = [
     "Diseased/Centerlines_graphs/Diseased_19.GML",
     "Diseased/Centerlines_graphs/Diseased_20.GML"
 ]
+DATASET_ASOCA_GRAPHS = [os.path.normpath(n) for n in DATASET_ASOCA_GRAPHS]
 
 DATASET_ASOCA_GRAPHS_DICT = {
     "Normal": DATASET_ASOCA_GRAPHS[:20],

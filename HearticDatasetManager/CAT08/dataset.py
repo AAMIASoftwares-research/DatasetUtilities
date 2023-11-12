@@ -1,5 +1,7 @@
 """Here are stored the standard names of all the datasets.
 """
+import os
+
 # All images in the cat08 dataset
 DATASET_CAT08_IMAGES = [
     "dataset00/image00.mhd",
@@ -35,6 +37,7 @@ DATASET_CAT08_IMAGES = [
     "dataset30/image30.mhd",
     "dataset31/image31.mhd"
 ]
+DATASET_CAT08_IMAGES = [os.path.normpath(n) for n in DATASET_CAT08_IMAGES]
 
 # Images for which the cat08 dataset provides the ground truth centerlines
 DATASET_CAT08_IMAGES_TRAINING = DATASET_CAT08_IMAGES[:8]
@@ -53,6 +56,7 @@ DATASET_CAT08_GRAPHS = [
     "centerlines_graphs/dataset06.GML",
     "centerlines_graphs/dataset07.GML"
 ]
+DATASET_CAT08_GRAPHS = [os.path.normpath(n) for n in DATASET_CAT08_GRAPHS]
 
 DATASET_CAT08_GRAPHS_RESAMPLED_05MM = [
     n.replace(".GML", "_0.5mm.GML") if n.find("_0.5mm.GML") == -1 else n for n in DATASET_CAT08_GRAPHS

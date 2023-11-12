@@ -43,7 +43,7 @@ class Cat08ImageCT(ImageCT):
     def _clean_image_path(self, path: str) -> str:
         """Clean the image path.
         """
-        path = os.path.normpath(path)
+        path = os.path.normpath(path).replace("\\", os.sep).replace("/", os.sep)
         # Check if the path is a folder
         if os.path.isdir(path) and os.path.basename(path)[-2:] in [f"{i:02d}" for i in range(0, 32)]:
             # Get the image path

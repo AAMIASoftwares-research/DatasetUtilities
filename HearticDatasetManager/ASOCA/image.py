@@ -4,7 +4,7 @@ import os
 import numpy
 import SimpleITK
 
-from HearticDatasetManager.affine import apply_affine_3d, get_affine_3d_translation, get_affine_3d_scale
+from HearticDatasetManager.affine import apply_affine_3d, compose_affines
 from HearticDatasetManager.image.image import ImageCT
 
 
@@ -34,11 +34,13 @@ class AsocaImageCT(ImageCT):
         # Centerline data coordinates affine
         self.affine_centerlines2ras = self._get_affine_centerlines2ras()
         self.affine_ras2centerlines = self._get_affine_ras2centerlines()
+        # Just for 3D Slicer visualization
+        self.affine_centerlines2ras_slicer = self._get_affine_centerlines2ras_slicer()
 
     def _clean_image_path(self, path: str) -> str:
         """Clean the image path.
         """
-        path = os.path.normpath(path)
+        path = os.path.normpath(path).replace("\\", os.sep).replace("/", os.sep)
         if os.path.isfile(path) and path.endswith(".nrrd"):
             return path
         else:
@@ -91,8 +93,8 @@ class AsocaImageCT(ImageCT):
         This has been found out empirically and it works fine in 3D Slicer.
         """
         out_affine = numpy.array([
-            [-1.0,  0.0, 0.0, -2*self.origin[0]],
-            [ 0.0, -1.0, 0.0, -2*self.origin[1]],
+            [-1.0,  0.0, 0.0, 2*self.origin[0]],
+            [ 0.0, -1.0, 0.0, 2*self.origin[1]],
             [ 0.0,  0.0, 1.0,               0.0],
             [ 0.0,  0.0, 0.0,               1.0]
         ])
@@ -103,12 +105,25 @@ class AsocaImageCT(ImageCT):
         This has been found out empirically and it works fine in 3D Slicer.
         """
         out_affine = numpy.array([
-            [-1.0,  0.0, 0.0, 2*self.origin[0]],
-            [ 0.0, -1.0, 0.0, 2*self.origin[1]],
+            [ 1.0,  0.0, 0.0, -2*self.origin[0]],
+            [ 0.0,  1.0, 0.0, -2*self.origin[1]],
             [ 0.0,  0.0, 1.0,              0.0],
             [ 0.0,  0.0, 0.0,              1.0]
         ])
         return out_affine
+
+    def _get_affine_centerlines2ras_slicer(self) -> numpy.ndarray:
+        """Builds the affine to transform ASOCA centelrines into the RAS image space of 3D Slicer.
+        This has been found out empirically and it works fine in 3D Slicer.
+        """
+        out_affine = numpy.array([
+            [-1.0,  0.0, 0.0, -2*self.origin[0]],
+            [ 0.0, -1.0, 0.0, -2*self.origin[1]],
+            [ 0.0,  0.0, 1.0,               0.0],
+            [ 0.0,  0.0, 0.0,               1.0]
+        ])
+        return out_affine
+    
 
 
 

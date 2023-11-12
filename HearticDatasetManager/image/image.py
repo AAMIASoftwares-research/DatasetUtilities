@@ -57,21 +57,24 @@ class BoundingBoxDict(UserDict):
     def get_artist(self):
         """Get a matplotlib.collections.LineCollection artist to plot the bounding box.
         """
-        lower = self.data["lower"]
-        upper = self.data["upper"]
+        lx, ly, lz = self.data["lower"]
+        ux, uy, uz = self.data["upper"]
         lines = [
-            [(lower[0], lower[1], lower[2]), (upper[0], lower[1], lower[2])],
-            [(lower[0], lower[1], lower[2]), (lower[0], upper[1], lower[2])],
-            [(lower[0], lower[1], lower[2]), (lower[0], lower[1], upper[2])],
-            [(upper[0], upper[1], upper[2]), (lower[0], upper[1], upper[2])],
-            [(upper[0], upper[1], upper[2]), (upper[0], lower[1], upper[2])],
-            [(upper[0], upper[1], upper[2]), (upper[0], upper[1], lower[2])],
-            [(lower[0], upper[1], upper[2]), (lower[0], lower[1], upper[2])],
-            [(lower[0], upper[1], upper[2]), (lower[0], upper[1], lower[2])],
-            [(upper[0], lower[1], upper[2]), (lower[0], lower[1], upper[2])],
-            [(upper[0], lower[1], upper[2]), (upper[0], lower[1], lower[2])],
-            [(upper[0], lower[1], lower[2]), (lower[0], lower[1], lower[2])],
-            [(upper[0], lower[1], lower[2]), (upper[0], upper[1], lower[2])],
+            # bottom square
+            [(lx, ly, lz),(ux, ly, lz)],
+            [(lx, ly, lz),(lx, uy, lz)],
+            [(lx, uy, lz),(ux, uy, lz)],
+            [(ux, ly, lz),(ux, uy, lz)],
+            # bottom to top
+            [(lx, ly, lz),(lx, ly, uz)],
+            [(ux, ly, lz),(ux, ly, uz)],
+            [(lx, uy, lz),(lx, uy, uz)],
+            [(ux, uy, lz),(ux, uy, uz)],
+            # top square
+            [(lx, ly, uz),(ux, ly, uz)],
+            [(lx, ly, uz),(lx, uy, uz)],
+            [(lx, uy, uz),(ux, uy, uz)],
+            [(ux, ly, uz),(ux, uy, uz)]
         ]
         collection = Line3DCollection(
             lines,
