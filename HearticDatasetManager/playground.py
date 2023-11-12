@@ -132,33 +132,39 @@ if __name__ == "__main__" and 0:
 
 if __name__ == "__main__":
     # get the image
+
+    # fix centerlines2ras also for cat08
+    # then, video of the centerline
+
+
     folder = os.path.normpath(
-        "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\Data\\ASOCA\\"
+        "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\Data\\CAT08\\"
     )
-    from .asoca.dataset import DATASET_ASOCA_IMAGES_DICT
-    from .asoca.image import AsocaImageCT
+    from .cat08.dataset import DATASET_CAT08_IMAGES
+    from .cat08.image import Cat08ImageCT
     file = os.path.join(
         folder,
-        DATASET_ASOCA_IMAGES_DICT["Normal"][0]
+        DATASET_CAT08_IMAGES[0]
     )
-    image = AsocaImageCT(file)
+    image = Cat08ImageCT(file)
 
     # get the centerline graph path
-    from .asoca.dataset import DATASET_ASOCA_GRAPHS_RESAMPLED_05MM_DICT
+    from .cat08.dataset import DATASET_CAT08_GRAPHS_RESAMPLED_05MM
     file = os.path.join(
         folder,
-        DATASET_ASOCA_GRAPHS_RESAMPLED_05MM_DICT["Normal"][0]
+        DATASET_CAT08_GRAPHS_RESAMPLED_05MM[0]
     )
     graph = hcatnetwork.io.load_graph(
         file,
         output_type=hcatnetwork.graph.SimpleCenterlineGraph
     )
     # choose the path to show
-    # hcatnetwork.draw.draw_simple_centerlines_graph_2d(graph)
+    # hcatnetwork.draw.draw_simple_centerlines_graph_2d(graph); quit()
 
     # get centelrine path - LCA
     from .affine import apply_affine_3d
-    ostium_id, endpoint_id = "2924", "7164"
+    ostium_id, endpoint_id = "2924", "7164" # asoca lad
+    ostium_id, endpoint_id = "7353", "15465" # cat08 lad
     path = networkx.shortest_path(graph, ostium_id, endpoint_id)
     path_lengths = networkx.shortest_path_length(graph, ostium_id, endpoint_id)
     # to RAS
@@ -202,13 +208,42 @@ if __name__ == "__main__":
     fig = plt.figure("2")
     ax = fig.add_subplot(111)
     
-    #im_hu = image.sample(path_ras.T, interpolation="linear")
-    #im_hu = numpy.vstack([im_hu]*5)
+
+    
     N_PER_SIDE = 30
     points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE, 3))
     im3 = numpy.zeros((N_PER_SIDE, N_PER_SIDE, len(path)))
-    for i, node_id in enumerate(path):
+    for i in range(len(path)-1):
         print(i, len(path))
+        # get direction unit vector
+        v = path_ras[i+1, :] - path_ras[i, :]
+        v = v / numpy.linalg.norm(v)
+        # get the set of points to sample on the plane with normal v
+        # -- get a vector perpendicular to v
+        if v[0] == 0:
+            d = numpy.array([1, 0, 0])
+        else:
+            d = numpy.array([-v[1]/v[0], 1, 0])
+        d = d / numpy.linalg.norm(d)
+        # -- get the set of points
+        Dx = numpy.linspace(-15, 15, N_PER_SIDE)
+        Dy = numpy.linspace(-15, 15, N_PER_SIDE)
+        for j, dx in enumerate(Dx):
+            for k, dy in enumerate(Dy):
+                points_to_sample[j*N_PER_SIDE+k, :] = path_ras[i, :] + 15 * v + d
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(path_ras[:,0], path_ras[:,1], path_ras[:,2], c="r", linewidth=1, zorder=100)
+        ax.scatter(points_to_sample[:,0], points_to_sample[:,1], points_to_sample[:,2], c="b", s=10, linewidths=0.0, antialiased=False)
+        plt.show()
+        continue
+
+
+        points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE, 3))
+        
+
+
+        # --
         x, y, z = path_ras[i, :]
         Dx = numpy.linspace(x-15, x+15, N_PER_SIDE)
         Dy = numpy.linspace(y-15, y+15, N_PER_SIDE)

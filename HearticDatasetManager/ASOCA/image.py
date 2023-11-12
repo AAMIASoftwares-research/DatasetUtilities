@@ -105,8 +105,8 @@ class AsocaImageCT(ImageCT):
         This has been found out empirically and it works fine in 3D Slicer.
         """
         out_affine = numpy.array([
-            [ 1.0,  0.0, 0.0, -2*self.origin[0]],
-            [ 0.0,  1.0, 0.0, -2*self.origin[1]],
+            [-1.0,  0.0, 0.0, -2*self.origin[0]],
+            [ 0.0, -1.0, 0.0, -2*self.origin[1]],
             [ 0.0,  0.0, 1.0,              0.0],
             [ 0.0,  0.0, 0.0,              1.0]
         ])

@@ -39,6 +39,8 @@ class Cat08ImageCT(ImageCT):
         # Centerline data coordinates affine
         self.affine_centerlines2ras = self._get_affine_centerlines2ras()
         self.affine_ras2centerlines = self._get_affine_ras2centerlines()
+        # Just for 3D Slicer visualization
+        self.affine_centerlines2ras_slicer = self._get_affine_centerlines2ras_slicer()
 
     def _clean_image_path(self, path: str) -> str:
         """Clean the image path.
@@ -106,9 +108,9 @@ class Cat08ImageCT(ImageCT):
         This has been found out empirically and it works fine in 3D Slicer.
         """
         out_affine = numpy.array([
-            [-1.0,  0.0, 0.0, -self.origin[0]],
-            [ 0.0, -1.0, 0.0, -self.origin[1]],
-            [ 0.0,  0.0, 1.0,  self.origin[2]],
+            [-1.0,  0.0, 0.0,  self.origin[0]],
+            [ 0.0, -1.0, 0.0,  self.origin[1]],
+            [ 0.0,  0.0, 1.0, -self.origin[2]],
             [ 0.0,  0.0, 0.0,             1.0]
         ])
         return out_affine
@@ -118,9 +120,21 @@ class Cat08ImageCT(ImageCT):
         This has been found out empirically and it works fine in 3D Slicer.
         """
         out_affine = numpy.array([
-            [-1.0,  0.0, 0.0,  self.origin[0]],
-            [ 0.0, -1.0, 0.0,  self.origin[1]],
-            [ 0.0,  0.0, 1.0, -self.origin[2]],
+            [-1.0,  0.0, 0.0, -self.origin[0]],
+            [ 0.0, -1.0, 0.0, -self.origin[1]],
+            [ 0.0,  0.0, 1.0,  self.origin[2]],
+            [ 0.0,  0.0, 0.0,             1.0]
+        ])
+        return out_affine
+    
+    def _get_affine_centerlines2ras_slicer(self) -> numpy.ndarray:
+        """Builds the affine to transform CAT08 centelrines into the RAS image space.
+        This has been found out empirically and it works fine in 3D Slicer.
+        """
+        out_affine = numpy.array([
+            [-1.0,  0.0, 0.0, -self.origin[0]],
+            [ 0.0, -1.0, 0.0, -self.origin[1]],
+            [ 0.0,  0.0, 1.0,  self.origin[2]],
             [ 0.0,  0.0, 0.0,             1.0]
         ])
         return out_affine
