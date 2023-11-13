@@ -138,9 +138,10 @@ if __name__ == "__main__":
 
 
     folder = os.path.normpath(
-        "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\Data\\CAT08\\"
+        "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\CAT08\\"
     )
     from .cat08.dataset import DATASET_CAT08_IMAGES
+    from .asoca.dataset import DATASET_ASOCA_IMAGES_DICT
     from .cat08.image import Cat08ImageCT
     file = os.path.join(
         folder,
@@ -175,6 +176,7 @@ if __name__ == "__main__":
         ]
     )
     path_ras = apply_affine_3d(image.affine_centerlines2ras, path_ras.T).T
+
     # check alignment
     
     if 0:
@@ -206,11 +208,15 @@ if __name__ == "__main__":
     # make the figure with two axes
     
     fig = plt.figure("2")
+    fig.set_facecolor("#000000")
     ax = fig.add_subplot(111)
+    ax.set_facecolor("#000000")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xlabel('')
+    ax.set_ylabel('')
     
-
-    
-    N_PER_SIDE = 30
+    N_PER_SIDE = 80
     points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE, 3))
     im3 = numpy.zeros((N_PER_SIDE, N_PER_SIDE, len(path)))
     for i in range(len(path)-1):
@@ -220,36 +226,17 @@ if __name__ == "__main__":
         v = v / numpy.linalg.norm(v)
         # get the set of points to sample on the plane with normal v
         # -- get a vector perpendicular to v
-        if v[0] == 0:
-            d = numpy.array([1, 0, 0])
-        else:
-            d = numpy.array([-v[1]/v[0], 1, 0])
-        d = d / numpy.linalg.norm(d)
+        v1 = numpy.array([1, 0, 0]) if v[0] == 0 else numpy.array([-v[1]/v[0], 1, 0])
+        v1 = v1 / numpy.linalg.norm(v1)
+        # -- get a vector perpendicular to v and d
+        v2 = numpy.cross(v, v1)
+        v2 = v2 / numpy.linalg.norm(v2)
         # -- get the set of points
         Dx = numpy.linspace(-15, 15, N_PER_SIDE)
         Dy = numpy.linspace(-15, 15, N_PER_SIDE)
         for j, dx in enumerate(Dx):
             for k, dy in enumerate(Dy):
-                points_to_sample[j*N_PER_SIDE+k, :] = path_ras[i, :] + 15 * v + d
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot(path_ras[:,0], path_ras[:,1], path_ras[:,2], c="r", linewidth=1, zorder=100)
-        ax.scatter(points_to_sample[:,0], points_to_sample[:,1], points_to_sample[:,2], c="b", s=10, linewidths=0.0, antialiased=False)
-        plt.show()
-        continue
-
-
-        points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE, 3))
-        
-
-
-        # --
-        x, y, z = path_ras[i, :]
-        Dx = numpy.linspace(x-15, x+15, N_PER_SIDE)
-        Dy = numpy.linspace(y-15, y+15, N_PER_SIDE)
-        for j, dx in enumerate(Dx):
-            for k, dy in enumerate(Dy):
-                points_to_sample[j*N_PER_SIDE+k, :] = [dx, dy, z]
+                points_to_sample[j*N_PER_SIDE+k, :] = path_ras[i, :] + v1*dx + v2*dy
         samples = image.sample(points_to_sample.T, interpolation="nearest")
         samples = samples.reshape((N_PER_SIDE, N_PER_SIDE))
         im3[:,:,i] = samples
@@ -258,7 +245,7 @@ if __name__ == "__main__":
         im3[:,:,0],
         cmap="gray",
         aspect="equal",
-        vmin = -10,
+        vmin = -100,
         vmax = 1000
     )
     
@@ -267,6 +254,11 @@ if __name__ == "__main__":
         ax.set_title(f"Frame {i} of {len(path)}")
         fig.canvas.draw_idle()
         plt.pause(0.1)
+    plt.show()
+
+    fig3 = plt.figure("3")
+    ax3 = fig3.add_subplot(111)
+    ax3.imshow(im3[40,:,:], cmap="gray", aspect="equal", vmin = -100, vmax = 1000)
     plt.show()
 
     # cycle
