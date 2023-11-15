@@ -6,6 +6,42 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__" and 0:
+    from .asoca.dataset import DATASET_ASOCA_IMAGES_DICT
+    from .asoca.image import AsocaImageCT
+    folder = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\ASOCA\\".replace("\\", "/")
+    file = os.path.join(
+        folder,
+        DATASET_ASOCA_IMAGES_DICT["Normal"][0]
+    )
+    image = AsocaImageCT(file)
+    print(image.bounding_box)
+    # get points to sample
+    xs = numpy.linspace(-100, -80, int(20*(1/0.05)))
+    ys = numpy.linspace(-30, -10, int(20*(1/0.05)))
+    zs = numpy.zeros(len(xs))-140
+    points = numpy.ones((3, len(xs)*len(ys)), dtype="float")
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            points[:, i*len(ys)+j] = [x, y, zs[i]]
+    samples = image.sample(points, interpolation="linear")
+    # plot 3d
+    fig, ax = plt.subplots(1, 1, subplot_kw={'projection': '3d'})
+    ax.add_artist(image.bounding_box.get_artist())
+    ax.scatter(image.origin[0], image.origin[1], image.origin[2], c="r", s=40)
+    ax.scatter(points[0,:], points[1,:], points[2,:], c=samples, s=40)
+    ax.set_xlim(image.bounding_box["lower"][0]-10, image.bounding_box["upper"][0]+10)
+    ax.set_ylim(image.bounding_box["lower"][1]-10, image.bounding_box["upper"][1]+10)
+    ax.set_zlim(image.bounding_box["lower"][2]-10, image.bounding_box["upper"][2]+10)
+    plt.show()
+
+    # make points into 2d image
+    plt.imshow(samples.reshape((len(xs), len(ys))), cmap="gray")
+    plt.show()
+
+
+
+
+if __name__ == "__main__" and 0:
     print("Running 'HearticDatasetManager.playground' module")
     
     ## view a saved centerline graph
@@ -115,22 +151,13 @@ if __name__ == "__main__" and 0:
 
 
 
-
-
-
-
-
-
-
 #####
 # VIDEO
 #####
 
 # A video of the view of the artery from a centelrine perspective along a path
 
-
-
-if __name__ == "__main__":
+if __name__ == "__main__" and 1:
     # get the image
 
     # fix centerlines2ras also for cat08
@@ -216,7 +243,7 @@ if __name__ == "__main__":
     ax.set_xlabel('')
     ax.set_ylabel('')
     
-    N_PER_SIDE = 80
+    N_PER_SIDE = 120
     points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE, 3))
     im3 = numpy.zeros((N_PER_SIDE, N_PER_SIDE, len(path)))
     for i in range(len(path)-1):
@@ -237,7 +264,7 @@ if __name__ == "__main__":
         for j, dx in enumerate(Dx):
             for k, dy in enumerate(Dy):
                 points_to_sample[j*N_PER_SIDE+k, :] = path_ras[i, :] + v1*dx + v2*dy
-        samples = image.sample(points_to_sample.T, interpolation="nearest")
+        samples = image.sample(points_to_sample.T, interpolation="linear")
         samples = samples.reshape((N_PER_SIDE, N_PER_SIDE))
         im3[:,:,i] = samples
     
@@ -253,12 +280,20 @@ if __name__ == "__main__":
         im_a.set_data(im3[:,:,i])
         ax.set_title(f"Frame {i} of {len(path)}")
         fig.canvas.draw_idle()
-        plt.pause(0.1)
+        if graph.nodes[path[i]]["topology"] == hcatnetwork.node.ArteryNodeTopology.INTERSECTION:
+            plt.pause(1)
+        else:
+            plt.pause(0.01)
     plt.show()
 
     fig3 = plt.figure("3")
     ax3 = fig3.add_subplot(111)
     ax3.imshow(im3[40,:,:], cmap="gray", aspect="equal", vmin = -100, vmax = 1000)
+    pos_bif = []
+    for i in range(len(path)):
+        if graph.nodes[path[i]]["topology"] == hcatnetwork.node.ArteryNodeTopology.INTERSECTION:
+            pos_bif.append(i)
+    ax.scatter(pos_bif, numpy.zeros(len(pos_bif))+60, c="r", s=40)
     plt.show()
 
     # cycle
