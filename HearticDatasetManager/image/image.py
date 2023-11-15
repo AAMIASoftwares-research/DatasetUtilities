@@ -54,7 +54,7 @@ class BoundingBoxDict(UserDict):
         inside[:] = numpy.logical_and(inside, location[2,:] < upper[2])
         return inside
 
-    def get_artist(self):
+    def get_artist(self) -> Line3DCollection:
         """Get a matplotlib.collections.LineCollection artist to plot the bounding box.
         """
         lx, ly, lz = self.data["lower"]
@@ -84,12 +84,33 @@ class BoundingBoxDict(UserDict):
             alpha=0.8
         )
         return collection
+    
+    def get_xlim(self) -> tuple[float, float]:
+        """Get the limits of the bounding box in the x dimension.
+        """
+        lx = self.data["lower"][0]
+        ux = self.data["upper"][0]
+        return (lx, ux)
+    
+    def get_ylim(self) -> tuple[float, float]:
+        """Get the limits of the bounding box in the y dimension.
+        """
+        ly = self.data["lower"][1]
+        uy = self.data["upper"][1]
+        return (ly, uy)
+
+    def get_zlim(self) -> tuple[float, float]:
+        """Get the limits of the bounding box in the z dimension.
+        """
+        lz = self.data["lower"][2]
+        uz = self.data["upper"][2]
+        return (lz, uz)
 
     def __repr__(self):
         return f"BoundingBoxDict({self.data['lower']}, {self.data['upper']})"
 
     def __str__(self):
-        return f"BoundingBoxDict({self.data['lower']}, {self.data['upper']})"
+        return f"BoundingBoxDict(lower: {self.data['lower']}, upper: {self.data['upper']})"
 
     def __getitem__(self, key):
         if key == "lower":
@@ -263,7 +284,7 @@ class ImageCT(object):
 
 
     def sample(self, location: numpy.ndarray, interpolation: str = "nearest"):
-        """Sample the image data at specific 3D location(s).
+        """Sample the image data at specific 3D location(s) expressed in the RAS space.
 
         Interpolation is applied to the image data to get the value at the
         specified location(s), if specified. "nearest" is the default and
@@ -300,7 +321,8 @@ class ImageCT(object):
         # Sample
         if interpolation == "nearest":
             location = numpy.round(location).astype("int")
-            # we have to cycle to keep in consideration the data that are outside the image
+            # we have to cycle to keep in consideration the data that are outside 
+            # of the image bounding box
             for i in range(location.shape[1]):
                 if not input_inside[i]:
                     continue
@@ -310,8 +332,14 @@ class ImageCT(object):
                     continue
                 if location[2,i] < 0 or location[2,i] >= self.shape[2]:
                     continue
-                output[i] = self.data[location[0,i], location[1,i], location[2,i]]
+                output[i] = self.data[
+                    int(location[0,i]), 
+                    int(location[1,i]), 
+                    int(location[2,i])
+                ]
         elif interpolation == "linear":
+            # trilinear interpolation
+            # https://en.wikipedia.org/wiki/Trilinear_interpolation
             location_floor = numpy.floor(location).astype("int")
             location_ceil = numpy.ceil(location).astype("int")
             location_floor_percent = (location-location_floor)/(location_ceil-location_floor)
@@ -326,23 +354,19 @@ class ImageCT(object):
                     continue
                 if location[2,i] < 0 or location[2,i] >= self.shape[2]:
                     continue
-                v_000 = self.data[location_floor[0,i], location_floor[1,i], location_floor[2,i]] # 0,0,0
-                w_000 = location_floor_percent[0,i] * location_floor_percent[1,i] * location_floor_percent[2,i]
-                v_100 = self.data[location_ceil[0,i], location_floor[1,i], location_floor[2,i]] # 1,0,0
-                w_100 = (1-location_floor_percent[0,i]) * location_floor_percent[1,i] * location_floor_percent[2,i]
-                v_010 = self.data[location_floor[0,i], location_ceil[1,i], location_floor[2,i]] # 0,1,0
-                w_010 = location_floor_percent[0,i] * (1-location_floor_percent[1,i]) * location_floor_percent[2,i]
-                v_110 = self.data[location_ceil[0,i], location_ceil[1,i], location_floor[2,i]] # 1,1,0
-                w_110 = (1-location_floor_percent[0,i]) * (1-location_floor_percent[1,i]) * location_floor_percent[2,i]
-                v_001 = self.data[location_floor[0,i], location_floor[1,i], location_ceil[2,i]] # 0,0,1
-                w_001 = location_floor_percent[0,i] * location_floor_percent[1,i] * (1-location_floor_percent[2,i])
-                v_101 = self.data[location_ceil[0,i], location_floor[1,i], location_ceil[2,i]] # 1,0,1
-                w_101 = (1-location_floor_percent[0,i]) * location_floor_percent[1,i] * (1-location_floor_percent[2,i])
-                v_011 = self.data[location_floor[0,i], location_ceil[1,i], location_ceil[2,i]] # 0,1,1
-                w_011 = location_floor_percent[0,i] * (1-location_floor_percent[1,i]) * (1-location_floor_percent[2,i])
-                v_111 = self.data[location_ceil[0,i], location_ceil[1,i], location_ceil[2,i]] # 1,1,1
-                w_111 = (1-location_floor_percent[0,i]) * (1-location_floor_percent[1,i]) * (1-location_floor_percent[2,i])
-                output[i] = v_000*w_000 + v_100*w_100 + v_010*w_010 + v_110*w_110 + v_001*w_001 + v_101*w_101 + v_011*w_011 + v_111*w_111
+                x0, x1 = int(numpy.floor(location[0,i])), int(numpy.ceil(location[0,i]))
+                y0, y1 = int(numpy.floor(location[1,i])), int(numpy.ceil(location[1,i]))
+                z0, z1 = int(numpy.floor(location[2,i])), int(numpy.ceil(location[2,i]))
+                xd = (location[0,i] - x0) / (x1 - x0)
+                yd = (location[1,i] - y0) / (y1 - y0)
+                zd = (location[2,i] - z0) / (z1 - z0)
+                c00 = self.data[x0,y0,z0] * (1 - xd) + self.data[x1,y0,z0] * xd
+                c01 = self.data[x0,y0,z1] * (1 - xd) + self.data[x1,y0,z1] * xd
+                c10 = self.data[x0,y1,z0] * (1 - xd) + self.data[x1,y1,z0] * xd
+                c11 = self.data[x0,y1,z1] * (1 - xd) + self.data[x1,y1,z1] * xd
+                c0 = c00 * (1 - yd) + c10 * yd
+                c1 = c01 * (1 - yd) + c11 * yd
+                output[i] = c0 * (1 - zd) + c1 * zd
         # Out
         if output.shape[0] == 1:
             return output[0]
