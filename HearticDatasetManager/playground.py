@@ -177,10 +177,10 @@ if __name__ == "__main__" and 1:
     image = Cat08ImageCT(file)
 
     # get the centerline graph path
-    from .cat08.dataset import DATASET_CAT08_GRAPHS_RESAMPLED_05MM
+    from .cat08.dataset import DATASET_CAT08_GRAPHS
     file = os.path.join(
         folder,
-        DATASET_CAT08_GRAPHS_RESAMPLED_05MM[0]
+        DATASET_CAT08_GRAPHS[0]
     )
     graph = hcatnetwork.io.load_graph(
         file,
@@ -243,10 +243,10 @@ if __name__ == "__main__" and 1:
     ax.set_xlabel('')
     ax.set_ylabel('')
     
-    N_PER_SIDE = 120
-    points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE, 3))
+    N_PER_SIDE = 100
+    points_to_sample = numpy.zeros((N_PER_SIDE*N_PER_SIDE*len(path), 3))
     im3 = numpy.zeros((N_PER_SIDE, N_PER_SIDE, len(path)))
-    for i in range(len(path)-1):
+    for i in range(len(path)-1)[:20]:
         print(i, len(path))
         # get direction unit vector
         v = path_ras[i+1, :] - path_ras[i, :]
@@ -259,15 +259,19 @@ if __name__ == "__main__" and 1:
         v2 = numpy.cross(v, v1)
         v2 = v2 / numpy.linalg.norm(v2)
         # -- get the set of points
-        Dx = numpy.linspace(-15, 15, N_PER_SIDE)
-        Dy = numpy.linspace(-15, 15, N_PER_SIDE)
+        Dx = numpy.linspace(-4.5, 4.5, N_PER_SIDE)
+        Dy = numpy.linspace(-4.5, 4.5, N_PER_SIDE)
         for j, dx in enumerate(Dx):
             for k, dy in enumerate(Dy):
-                points_to_sample[j*N_PER_SIDE+k, :] = path_ras[i, :] + v1*dx + v2*dy
-        samples = image.sample(points_to_sample.T, interpolation="linear")
-        samples = samples.reshape((N_PER_SIDE, N_PER_SIDE))
-        im3[:,:,i] = samples
+                points_to_sample[i*N_PER_SIDE*N_PER_SIDE+j*N_PER_SIDE+k, :] = path_ras[i, :] + v1*dx + v2*dy
+    points_to_sample = points_to_sample[:20*N_PER_SIDE*N_PER_SIDE,:]
+    samples = image.sample(points_to_sample.T, interpolation="linear")
+    samples = samples.reshape((20, N_PER_SIDE, N_PER_SIDE)).transpose((1,2,0))
     
+    plt.imshow(samples[int(N_PER_SIDE/2),:,:], cmap="gray", aspect="equal", vmin = -100, vmax = 1000)
+    plt.show()
+    
+    im3[:,:,:20] = samples
     im_a = ax.imshow(
         im3[:,:,0],
         cmap="gray",
@@ -281,14 +285,14 @@ if __name__ == "__main__" and 1:
         ax.set_title(f"Frame {i} of {len(path)}")
         fig.canvas.draw_idle()
         if graph.nodes[path[i]]["topology"] == hcatnetwork.node.ArteryNodeTopology.INTERSECTION:
-            plt.pause(1)
+            plt.pause(0.05)
         else:
-            plt.pause(0.01)
+            plt.pause(0.001)
     plt.show()
 
     fig3 = plt.figure("3")
     ax3 = fig3.add_subplot(111)
-    ax3.imshow(im3[40,:,:], cmap="gray", aspect="equal", vmin = -100, vmax = 1000)
+    ax3.imshow(im3[int(N_PER_SIDE/2),:,:], cmap="gray", aspect="equal", vmin = -100, vmax = 1000)
     pos_bif = []
     for i in range(len(path)):
         if graph.nodes[path[i]]["topology"] == hcatnetwork.node.ArteryNodeTopology.INTERSECTION:
