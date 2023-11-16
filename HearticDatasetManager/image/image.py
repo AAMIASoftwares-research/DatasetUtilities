@@ -269,7 +269,7 @@ class ImageCT(object):
                     c_ += 1
         # Transform to RAS
         ras_coords = numpy.zeros(
-            shape=(self.shape[0], self.shape[1], self.shape[2], 3),
+            shape=(self.shape[0], self.shape[1], self.shape[2], 4),
             dtype=numpy.float32
         )
         ras_vector = apply_affine_3d(self.affine_ijk2ras, ijk_vector)
@@ -277,8 +277,8 @@ class ImageCT(object):
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
                 for k in range(self.shape[2]):
-                    ras_coords[i, j, k, :] = ras_vector[:, c_]
-                    ras_coords[i, j, k, 3] = float(self.data[i, j, k])
+                    ras_coords[i, j, k, :3] = ras_vector[:, c_]
+                    ras_coords[i, j, k,  3] = float(self.data[i, j, k])
                     c_ += 1
         return ras_coords
 
