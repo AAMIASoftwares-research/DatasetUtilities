@@ -269,7 +269,7 @@ class ImageCT(object):
                     c_ += 1
         # Transform to RAS
         ras_coords = numpy.zeros(
-            shape=(self.shape[0], self.shape[1], self.shape[2], 3),
+            shape=(self.shape[0], self.shape[1], self.shape[2], 4),
             dtype=numpy.float32
         )
         ras_vector = apply_affine_3d(self.affine_ijk2ras, ijk_vector)
@@ -277,8 +277,8 @@ class ImageCT(object):
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
                 for k in range(self.shape[2]):
-                    ras_coords[i, j, k, :] = ras_vector[:, c_]
-                    ras_coords[i, j, k, 3] = float(self.data[i, j, k])
+                    ras_coords[i, j, k, :3] = ras_vector[:, c_]
+                    ras_coords[i, j, k,  3] = float(self.data[i, j, k])
                     c_ += 1
         return ras_coords
 
@@ -323,6 +323,8 @@ class ImageCT(object):
             location = numpy.round(location).astype("int")
             # we have to cycle to keep in consideration the data that are outside 
             # of the image bounding box
+            # - save the indices of the locations inside the image
+            inside_idxs = []
             for i in range(location.shape[1]):
                 if not input_inside[i]:
                     continue
@@ -332,17 +334,14 @@ class ImageCT(object):
                     continue
                 if location[2,i] < 0 or location[2,i] >= self.shape[2]:
                     continue
-                output[i] = self.data[
-                    int(location[0,i]), 
-                    int(location[1,i]), 
-                    int(location[2,i])
-                ]
+                inside_idxs.append(i)
+            # - sample
+            if len(inside_idxs) > 0:
+                output[inside_idxs] = self.data[location[0,inside_idxs], location[1,inside_idxs], location[2,inside_idxs]]
         elif interpolation == "linear":
             # trilinear interpolation
             # https://en.wikipedia.org/wiki/Trilinear_interpolation
-            location_floor = numpy.floor(location).astype("int")
-            location_ceil = numpy.ceil(location).astype("int")
-            location_floor_percent = (location-location_floor)/(location_ceil-location_floor)
+            inside_idxs = []
             for i in range(location.shape[1]):
                 if not input_inside[i]:
                     continue
@@ -354,19 +353,35 @@ class ImageCT(object):
                     continue
                 if location[2,i] < 0 or location[2,i] >= self.shape[2]:
                     continue
-                x0, x1 = int(numpy.floor(location[0,i])), int(numpy.ceil(location[0,i]))
-                y0, y1 = int(numpy.floor(location[1,i])), int(numpy.ceil(location[1,i]))
-                z0, z1 = int(numpy.floor(location[2,i])), int(numpy.ceil(location[2,i]))
-                xd = (location[0,i] - x0) / (x1 - x0)
-                yd = (location[1,i] - y0) / (y1 - y0)
-                zd = (location[2,i] - z0) / (z1 - z0)
-                c00 = self.data[x0,y0,z0] * (1 - xd) + self.data[x1,y0,z0] * xd
-                c01 = self.data[x0,y0,z1] * (1 - xd) + self.data[x1,y0,z1] * xd
-                c10 = self.data[x0,y1,z0] * (1 - xd) + self.data[x1,y1,z0] * xd
-                c11 = self.data[x0,y1,z1] * (1 - xd) + self.data[x1,y1,z1] * xd
-                c0 = c00 * (1 - yd) + c10 * yd
-                c1 = c01 * (1 - yd) + c11 * yd
-                output[i] = c0 * (1 - zd) + c1 * zd
+                inside_idxs.append(i)
+                # POINT BY POINT PROCEDURE
+                # This is what is happening. It is slow. Using the whole vectors is much faster.
+                # x0, x1 = int(numpy.floor(location[0,i])), int(numpy.ceil(location[0,i]))
+                # y0, y1 = int(numpy.floor(location[1,i])), int(numpy.ceil(location[1,i]))
+                # z0, z1 = int(numpy.floor(location[2,i])), int(numpy.ceil(location[2,i]))
+                # xd = (location[0,i] - x0) / (x1 - x0)
+                # yd = (location[1,i] - y0) / (y1 - y0)
+                # zd = (location[2,i] - z0) / (z1 - z0)
+                # c00 = self.data[x0,y0,z0] * (1 - xd) + self.data[x1,y0,z0] * xd
+                # c01 = self.data[x0,y0,z1] * (1 - xd) + self.data[x1,y0,z1] * xd
+                # c10 = self.data[x0,y1,z0] * (1 - xd) + self.data[x1,y1,z0] * xd
+                # c11 = self.data[x0,y1,z1] * (1 - xd) + self.data[x1,y1,z1] * xd
+                # c0 = c00 * (1 - yd) + c10 * yd
+                # c1 = c01 * (1 - yd) + c11 * yd
+                # output[i] = c0 * (1 - zd) + c1 * zd
+            if len(inside_idxs) > 0:
+                # - clean
+                x0 = numpy.floor(location[:,inside_idxs]).astype("int")
+                x1 = numpy.ceil(location[:,inside_idxs]).astype("int")
+                xd = (location[:,inside_idxs]-x0)/(x1-x0)
+                # - sample
+                c00 = self.data[x0[0,:],x0[1,:],x0[2,:]] * (1 - xd[0,:]) + self.data[x1[0,:],x0[1,:],x0[2,:]] * xd[0,:]
+                c01 = self.data[x0[0,:],x0[1,:],x1[2,:]] * (1 - xd[0,:]) + self.data[x1[0,:],x0[1,:],x1[2,:]] * xd[0,:]
+                c10 = self.data[x0[0,:],x1[1,:],x0[2,:]] * (1 - xd[0,:]) + self.data[x1[0,:],x1[1,:],x0[2,:]] * xd[0,:]
+                c11 = self.data[x0[0,:],x1[1,:],x1[2,:]] * (1 - xd[0,:]) + self.data[x1[0,:],x1[1,:],x1[2,:]] * xd[0,:]
+                c0 = c00 * (1 - xd[1,:]) + c10 * xd[1,:]
+                c1 = c01 * (1 - xd[1,:]) + c11 * xd[1,:]
+                output[inside_idxs] = c0 * (1 - xd[2,:]) + c1 * xd[2,:]
         # Out
         if output.shape[0] == 1:
             return output[0]
