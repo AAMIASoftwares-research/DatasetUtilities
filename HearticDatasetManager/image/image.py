@@ -4,7 +4,7 @@ Standardized methods are defined here to allow for easy access to the
 images and their metadata.
 """
 
-import os
+import os, copy
 from collections import UserDict
 import numpy
 
@@ -315,9 +315,12 @@ class ImageCT(object):
         location_ras = location
         location = apply_affine_3d(self.affine_ras2ijk, location)
         # Allocate output memory - locations outside the image will be set to the minimum of the image
-        output = numpy.ones(location.shape[1]) * numpy.min(self.data)
+        output = numpy.zeros(location.shape[1]) + numpy.min(self.data)
         # check wgich input locations are inside the bbox
-        input_inside = self.bounding_box.contains(location_ras)
+        conservative_b_box = copy.deepcopy(self.bounding_box) # conservatiove bb for these tests
+        conservative_b_box["lower"] += 0.001
+        conservative_b_box["upper"] -= 0.001
+        input_inside = conservative_b_box.contains(location_ras)
         # Sample
         if interpolation == "nearest":
             location = numpy.round(location).astype("int")
@@ -328,11 +331,11 @@ class ImageCT(object):
             for i in range(location.shape[1]):
                 if not input_inside[i]:
                     continue
-                if location[0,i] < 0 or location[0,i] >= self.shape[0]:
+                if location[0,i] < 0 or location[0,i] >= self.shape[0]-1:
                     continue
-                if location[1,i] < 0 or location[1,i] >= self.shape[1]:
+                if location[1,i] < 0 or location[1,i] >= self.shape[1]-1:
                     continue
-                if location[2,i] < 0 or location[2,i] >= self.shape[2]:
+                if location[2,i] < 0 or location[2,i] >= self.shape[2]-1:
                     continue
                 inside_idxs.append(i)
             # - sample
@@ -345,13 +348,14 @@ class ImageCT(object):
             for i in range(location.shape[1]):
                 if not input_inside[i]:
                     continue
-                if not input_inside[i]:
+                l = location[:,i]
+                lf = numpy.floor(l).astype("int")
+                lc = numpy.ceil(l).astype("int")
+                if lf[0] < 0 or lc[0] > self.shape[0]-1:
                     continue
-                if location[0,i] < 0 or location[0,i] >= self.shape[0]:
+                if lf[1] < 0 or lc[1] > self.shape[1]-1:
                     continue
-                if location[1,i] < 0 or location[1,i] >= self.shape[1]:
-                    continue
-                if location[2,i] < 0 or location[2,i] >= self.shape[2]:
+                if lf[2] < 0 or lc[2] > self.shape[2]-1:
                     continue
                 inside_idxs.append(i)
                 # POINT BY POINT PROCEDURE
@@ -398,3 +402,86 @@ class ImageCT(object):
 
 class ImageSequenceCT(object):
     pass
+
+
+
+
+if __name__ == "__main__":
+    # Test image sampling
+    FOLDER = "E:\\MatteoLeccardi\\HearticData\\ASOCA\\"
+    from ..asoca import DATASET_ASOCA_IMAGES_DICT
+    from ..asoca import AsocaImageCT
+    
+    for t_ in ["Normal", "Diseased"]:
+        for n_im_ in range(1, 21):
+            print(t_, n_im_, "\n")
+            f = os.path.join(
+                FOLDER,
+                DATASET_ASOCA_IMAGES_DICT[t_][n_im_]
+            )
+            image = AsocaImageCT(f)
+            
+
+            # Test sampling
+            xl, xh = image.bounding_box.get_xlim()
+            yl, yh = image.bounding_box.get_ylim()
+            zl, zh = image.bounding_box.get_zlim()
+
+            points = 2*numpy.random.rand(5000, 3)-1.0 + numpy.array([xl, yl, zh])
+
+            import matplotlib.pyplot as plt
+            """ """
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+            ax.add_artist(image.bounding_box.get_artist())
+            ax.scatter(points[:,0], points[:,1], points[:,2], s=1)
+            ax.set_xlim(points.min(axis=0)[0], points.max(axis=0)[0])
+            ax.set_ylim(points.min(axis=0)[1], points.max(axis=0)[1])
+            ax.set_zlim(points.min(axis=0)[2], points.max(axis=0)[2])
+            plt.show()
+
+            image.data = numpy.random.rand(*image.data.shape)
+            image.data[10,10,10] = -50.0
+            samples = image.sample(points.T, interpolation="linear")
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+            ax.add_artist(image.bounding_box.get_artist())
+            ax.scatter(points[:,0], points[:,1], points[:,2], s=1, c=samples)
+            ax.set_xlim(points.min(axis=0)[0], points.max(axis=0)[0])
+            ax.set_ylim(points.min(axis=0)[1], points.max(axis=0)[1])
+            ax.set_zlim(points.min(axis=0)[2], points.max(axis=0)[2])
+            plt.show()
+            """ """
+
+            ### intensive test
+            i = 0
+            #plt.ion()
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+            ax.add_artist(image.bounding_box.get_artist())
+            scat = ax.scatter([0], [0], [0], s=1)
+            ax.set_xlim(xl-10, xh+10)
+            ax.set_ylim(yl-10, yh+10)
+            ax.set_zlim(zl-10, zh+10)
+            fig.canvas.draw_idle()
+            visited_x, visited_y, visited_z = [], [], []
+            while i < 5000:
+                x, y, z = numpy.random.rand(3)
+                x = x * (xh-xl)+10 + xl - 5
+                x = numpy.random.choice([x, x, x, x, xl, xh])
+                y = y * (yh-yl)+10 + yl - 5
+                y = numpy.random.choice([y, y, y, y, yl, yh])
+                z = z * (zh-zl)+10 + zl - 5
+                z = numpy.random.choice([z, z, z, z, zl, zh])
+                points = 4*numpy.random.rand(1000, 3) -2.0 + numpy.array([x, y, z])
+                samples = image.sample(points.T, interpolation="linear")
+                visited_x.append(x)
+                visited_y.append(y)
+                visited_z.append(z)
+                if len(visited_x) > 3:
+                    p_ = numpy.vstack((visited_x, visited_y, visited_z)).T
+                    scat._offsets3d = (visited_x, visited_y, visited_z)
+                    fig.canvas.draw_idle()
+                    plt.pause(0.05)
+                """ """
+                print(f"{i:11d} : {x:4.6f}, {y:4.6f}, {z:4.6f}", end="\r")
+                i += 1
+            plt.close(fig)
+              
