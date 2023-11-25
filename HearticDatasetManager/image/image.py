@@ -320,7 +320,7 @@ class ImageCT(object):
         # Allocate output memory - locations outside the image will be set to the minimum of the image
         output = numpy.zeros(location.shape[1]) + numpy.min(self.data)
         # check wgich input locations are inside the bbox
-        input_inside = self.bounding_box.contains(location_ras)
+        input_inside = self._conservative_b_box.contains(location_ras)
         # Sample
         if interpolation == "nearest":
             location = numpy.round(location).astype("int")
