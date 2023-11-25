@@ -157,7 +157,7 @@ if __name__ == "__main__" and 0:
 
 # A video of the view of the artery from a centelrine perspective along a path
 
-if __name__ == "__main__" and 1:
+if __name__ == "__main__" and 0:
     # get the image
 
     # fix centerlines2ras also for cat08
