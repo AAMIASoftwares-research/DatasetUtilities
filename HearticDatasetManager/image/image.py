@@ -211,8 +211,11 @@ class ImageCT(object):
         self.affine_ijk2ras_direction = affine_ijk2ras_direction
         self.affine_ijk2ras = self._set_affine_ijk2ras()
         self.affine_ras2ijk = self._set_affine_ras2ijk()
-        # Bounding box
+        # Bounding boxes
         self.bounding_box = self._set_bounding_box()
+        self._conservative_b_box = self._set_bounding_box()
+        self._conservative_b_box["lower"] += 0.001
+        self._conservative_b_box["upper"] -= 0.001
 
     def _set_bounding_box(self):
         """Set the bounding box of the image in RAS coordinates.
@@ -317,10 +320,7 @@ class ImageCT(object):
         # Allocate output memory - locations outside the image will be set to the minimum of the image
         output = numpy.zeros(location.shape[1]) + numpy.min(self.data)
         # check wgich input locations are inside the bbox
-        conservative_b_box = copy.deepcopy(self.bounding_box) # conservatiove bb for these tests
-        conservative_b_box["lower"] += 0.001
-        conservative_b_box["upper"] -= 0.001
-        input_inside = conservative_b_box.contains(location_ras)
+        input_inside = self.bounding_box.contains(location_ras)
         # Sample
         if interpolation == "nearest":
             location = numpy.round(location).astype("int")
