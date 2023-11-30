@@ -249,7 +249,7 @@ class ImageCT(object):
         affine = compose_affines([affine, self.affine_ijk2ras_direction]) # here order is not important
         return affine
 
-    def get_data_coordinates_grid(self):
+    def get_data_coordinates_grid(self) -> numpy.ndarray:
         """Returns a numpy.ndarray of the same shape of data+1, where
         the last dimension is either 0, 1 or 2 and corresponds to the
         physical x, y, and z of the voxel, and 3 to the value in the image data.
@@ -286,7 +286,7 @@ class ImageCT(object):
         return ras_coords
 
 
-    def sample(self, location: numpy.ndarray, interpolation: str = "nearest"):
+    def sample(self, location: numpy.ndarray, interpolation: str = "nearest") -> numpy.ndarray:
         """Sample the image data at specific 3D location(s) expressed in the RAS space.
 
         Interpolation is applied to the image data to get the value at the
