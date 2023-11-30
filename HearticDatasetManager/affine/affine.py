@@ -25,6 +25,9 @@ def get_affine_3d_translation(translation: numpy.ndarray) -> numpy.ndarray(shape
     numpy.ndarray
         The affine matrix for the translation.
     """
+    translation = translation.astype(numpy.float32).flatten()
+    if translation.shape != (3,):
+        raise ValueError(f"Translation must be a 3D vector. Got {translation.shape} vector.")
     affine = numpy.eye(4)
     affine[0:3, 3] = translation
     return affine
@@ -85,6 +88,9 @@ def get_affine_3d_scale(scale: numpy.ndarray) -> numpy.ndarray(shape=(4, 4)):
     numpy.ndarray
         The affine matrix for the scaling.
     """
+    scale = scale.astype(numpy.float32).flatten()
+    if scale.shape != (3,):
+        raise ValueError(f"Scale must be a 3D vector. Got {scale.shape} vector.")
     affine = numpy.eye(4)
     affine[0, 0] = scale[0]
     affine[1, 1] = scale[1]
@@ -115,10 +121,16 @@ def get_affine_3d_rotation_around_axis(axis_of_rotation: numpy.ndarray, rotation
         The rotation matrix.
     """
     # Convert to radians if necessary
+    _list_of_units = ["rad", "deg"]
+    if rotation_units not in _list_of_units:
+        raise ValueError(f"Unknown rotation units '{rotation_units}'. Choose from {_list_of_units}.")
     if rotation_units == "deg":
         rotation = numpy.deg2rad(rotation)
+    # input cleaning
+    axis_of_rotation = axis_of_rotation.astype(numpy.float32).flatten()
+    if axis_of_rotation.shape != (3,):
+        raise ValueError(f"Axis of rotation must be a 3D vector. Got {axis_of_rotation.shape} vector.")
     # Transform to unit vector
-    axis_of_rotation = axis_of_rotation.astype(numpy.float32)
     if numpy.linalg.norm(axis_of_rotation) == 0:
         raise ValueError("Axis of rotation cannot be zero vector.")
     axis_of_rotation /= numpy.linalg.norm(axis_of_rotation)
@@ -158,13 +170,21 @@ def get_affine_3d_rotation_around_vector(vector: numpy.ndarray, vector_source: n
         The rotation matrix.
     """
     # Convert to radians if necessary
+    _list_of_units = ["rad", "deg"]
+    if rotation_units not in _list_of_units:
+        raise ValueError(f"Unknown rotation units '{rotation_units}'. Choose from {_list_of_units}.")
     if rotation_units == "deg":
         rotation = numpy.deg2rad(rotation)
+    # input cleaning
+    vector = vector.astype(numpy.float32).flatten()
+    if vector.shape != (3,):
+        raise ValueError(f"Axis of rotation (vector) must be a 3D vector. Got {vector.shape} vector.")
+    vector_source = vector_source.astype(numpy.float32).flatten()
+    if vector_source.shape != (3,):
+        raise ValueError(f"Axis of rotation source (vector_source) must be a 3D vector. Got {vector_source.shape} vector.")
     # Transform to unit vector
-    vector = vector.astype(numpy.float32)
-    vector_source = vector_source.astype(numpy.float32) 
     if numpy.linalg.norm(vector) == 0:
-        raise ValueError("Parameter vector cannot be zero vector.")
+        raise ValueError("Axis of rotation (vector) cannot be zero vector.")
     vector /= numpy.linalg.norm(vector)
     # Translate to origin from center of rotation
     translation_matrix = get_affine_3d_translation(-vector_source)
