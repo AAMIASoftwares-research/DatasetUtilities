@@ -386,6 +386,8 @@ class ImageCT(object):
                 c0 = c00 * (1 - xd[1,:]) + c10 * xd[1,:]
                 c1 = c01 * (1 - xd[1,:]) + c11 * xd[1,:]
                 output[inside_idxs] = c0 * (1 - xd[2,:]) + c1 * xd[2,:]
+        # Clean output fron nans
+        output[numpy.isnan(output)] = numpy.min(self.data)
         # Out
         if output.shape[0] == 1:
             return output[0]
