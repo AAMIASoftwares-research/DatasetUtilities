@@ -34,12 +34,14 @@ class ImagecasImageCT(ImageCT):
         """Clean the image path.
         """
         path = os.path.normpath(path).replace("\\", os.sep).replace("/", os.sep)
-        if os.path.isfile(path) and path.endswith(".nii.gz"):
+        if os.path.isfile(path) and path.endswith(".img.nii.gz"):
             return path
         else:
-            raise ValueError(f"The path is not a recognized .nii.gz file or it cannot be found:\n{path}")
+            if os.path.isfile(path) and path.endswith(".label.nii.gz"):
+                raise ValueError(f"The path is a label file, not an image file:\n{path}. Open it with the ImagecasLabelCT class instead.")
+            else:
+                raise ValueError(f"The path is not a recognized .img.nii.gz file or it cannot be found:\n{path}")
         
-
     def _get_image_name(self, path: str) -> str:
         im_name = os.path.splitext(os.path.basename(path))[0]
         im_name = os.path.splitext(im_name)[0]
@@ -59,28 +61,34 @@ class ImagecasImageCT(ImageCT):
         #  ###############
         image_array.clip(min=-1024, out=image_array)
         # - Data i,j,k correspond to y or A, x or R, z or S. 
-        #   -> Transpose data so that you have data[i, j, k] where i->x or R, j->y or A, k->z or S
-        image_array = numpy.transpose(image_array, axes=(1, 0, 2))
+        #   -> no need to transpose, we just flip the dimension 0
+        image_array = numpy.flip(image_array, axis=0)
         # Load the image header
         image_header = image.header
         # Get the image spacing
         image_spacing = numpy.array(
-            [image_header["pixdim"][2], image_header["pixdim"][1], image_header["pixdim"][3]]
+            [image_header["pixdim"][1], image_header["pixdim"][2], image_header["pixdim"][3]]
             ).astype(numpy.float32).reshape((3,))
         # Get the image origin
         image_origin = numpy.array(
-            [image_header["qoffset_y"], image_header["qoffset_x"], image_header["qoffset_z"]]
+            [image_header["qoffset_x"], image_header["qoffset_y"], image_header["qoffset_z"]]
             ).astype(numpy.float32).reshape((3,))
+        # - since we flipped the R axis in the image array, we have to flip the origin
+        #   conceptually, I don't know why this formula works, but it does
+        image_origin[0] = -image_origin[0] + image_spacing[0]*image_array.shape[0]
         # Get the image direction
         affine_ijk2ras_direction = numpy.eye(4)
-        s_rows = [image_header["srow_x"], image_header["srow_y"], image_header["srow_z"]]
-        for i in range(3):
-            affine_ijk2ras_direction[i,i] *= numpy.sign(s_rows[i][i])
         # transform origin according to ras orientation
-        image_origin = apply_affine_3d(affine_ijk2ras_direction, image_origin)
+        # for this nifti dataset, we have to do like so
+        image_origin *= numpy.sign(
+            [image_header["srow_x"][0], image_header["srow_y"][1], image_header["srow_z"][2]]
+        )
         # out
         return (image_array, image_origin, image_spacing, affine_ijk2ras_direction)
 
+
+class ImagecasLabelCT(ImageCT):
+    pass
 
 
 
@@ -88,7 +96,7 @@ class ImagecasImageCT(ImageCT):
         
 if __name__ == "__main__":
     # Example usage
-    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\1.img.nii.gz"
+    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\376.img.nii.gz"
     image = ImagecasImageCT(image_path)
 
     import matplotlib.pyplot as plt
@@ -113,17 +121,16 @@ if __name__ == "__main__":
     ax.set_zlim(image.bounding_box["lower"][2]-100, image.bounding_box["upper"][2]+100)
     
     # Slice
-    z_ras = image.origin[2]+40
-    xs = numpy.linspace(image.bounding_box["lower"][0]-2, image.bounding_box["upper"][0]+2, 200)
-    ys = numpy.linspace(image.bounding_box["lower"][1]-2, image.bounding_box["upper"][1]+2, 200)
+    z_ras = (image.bounding_box["lower"][2] + image.bounding_box["upper"][2])/2 
+    xs = numpy.linspace(image.bounding_box["lower"][0]-5, image.bounding_box["upper"][0]+5, 80)
+    ys = numpy.linspace(image.bounding_box["lower"][1]-5, image.bounding_box["upper"][1]+5, 80)
     points_to_sample = []
     for x in xs:
         for y in ys:
             points_to_sample.append([x, y, z_ras])
     points_to_sample = numpy.array(points_to_sample)
     samples = image.sample(points_to_sample.T, interpolation="linear")
-    print(points_to_sample.shape, samples.shape)
-    print(set(samples.tolist()))
+    #print(samples)
     ax.scatter(
         points_to_sample[:,0],
         points_to_sample[:,1],
@@ -135,9 +142,6 @@ if __name__ == "__main__":
         antialiased=False
     )
     
-    plt.show()
-
-    plt.hist(samples, bins=300)
     plt.show()
 
     

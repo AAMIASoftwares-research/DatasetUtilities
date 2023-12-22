@@ -377,7 +377,12 @@ class ImageCT(object):
                 # - clean
                 x0 = numpy.floor(location[:,inside_idxs]).astype("int")
                 x1 = numpy.ceil(location[:,inside_idxs]).astype("int")
-                xd = (location[:,inside_idxs]-x0)/(x1-x0)
+                # -- in the following line, the complete mathematical formula should be:
+                #    xd = (location[:,inside_idxs]-x0)/(x1-x0)
+                #    but since x1-x0 = 1, we can simplify.
+                #    Also, if x1-x0 == 0, we have a division by zero, so a bug.
+                #    In htis way, we cannot have that kind of bug
+                xd = (location[:,inside_idxs]-x0)
                 # - sample
                 c00 = self.data[x0[0,:],x0[1,:],x0[2,:]] * (1 - xd[0,:]) + self.data[x1[0,:],x0[1,:],x0[2,:]] * xd[0,:]
                 c01 = self.data[x0[0,:],x0[1,:],x1[2,:]] * (1 - xd[0,:]) + self.data[x1[0,:],x0[1,:],x1[2,:]] * xd[0,:]
