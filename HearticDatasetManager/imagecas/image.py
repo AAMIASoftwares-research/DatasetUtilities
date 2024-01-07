@@ -91,12 +91,15 @@ class ImagecasLabelCT(ImageCT):
     pass
 
 
-
+##########
+############
+###############       
+print("       \n     CHECK THE HOUNSFIELD UNITS, YOU DID NOT DO THAT YET")    
 
         
 if __name__ == "__main__":
     # Example usage
-    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\376.img.nii.gz"
+    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\325.img.nii.gz"
     image = ImagecasImageCT(image_path)
 
     import matplotlib.pyplot as plt
@@ -144,30 +147,94 @@ if __name__ == "__main__":
     
     plt.show()
 
+###
+# Find all the images and labels that are not coupled
+###
     
-    
+if __name__ == "__main__":
+    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\"
+    images_without_labels = []
+    labels_without_images = []
+    for i in range(1, 1001):
+        image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\" + str(i) + ".img.nii.gz"
+        label_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\" + str(i) + ".label.nii.gz"
+        if not os.path.exists(image_path):
+            labels_without_images.append(i)
+        if not os.path.exists(label_path):
+            images_without_labels.append(i)
+    nonexisting_images_and_labels = []
+    for i in range(1, 1001):
+        if i in images_without_labels and i in labels_without_images:
+            nonexisting_images_and_labels.append(i)
+            labels_without_images.remove(i)
+            images_without_labels.remove(i)
+    print("Images without labels:", images_without_labels)
+    print("Labels without images:", labels_without_images)
+    print("Nonexisting images and labels:", nonexisting_images_and_labels)
 
-if __name__ == "__main__" and 0:
+        
+
+
+# Try to open all images and try to understand if the hounsfield units
+# are scaled the same for all images
+# Some of them give error on opening, so they will be deleted after being discovered
+    
+    
+def close_plot(event):
+    if event.key == 'enter':
+        plt.close()
+
+if __name__ == "__main__":
     # check if all datasets are scaled the same
     import matplotlib.pyplot as plt
     base_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\"
-    ######################
-
-    for im_path in DATASET_ASOCA_IMAGES:
+    list_of_images = os.listdir(base_path)
+    import random
+    random.shuffle(list_of_images)
+    mean_list = []
+    stdev_list = []
+    percentile_05_list = []
+    percentile_95_list = []
+    for i, im_path in enumerate(list_of_images):
+        if not im_path.endswith(".img.nii.gz"):
+            continue
+        print(im_path, 100*i/len(list_of_images), "%")
         im_path = os.path.join(base_path, im_path)
         if not os.path.exists(im_path):
             continue
-        image = AsocaImageCT(im_path)
-        if 0:
+        image = ImagecasImageCT(im_path)
+        a = False
+        b = True
+        if a:
             plt.hist(image.data.flatten(), bins=300)
             plt.title(os.path.basename(im_path))
+            plt.connect('key_press_event', close_plot)
             plt.show()
-        if 1:
+        if a:
             # Image is shown in the contrary because
             # the ijk mapping is different from the ras mapping
             # >> plt.imshow(image.data[:,:,59], cmap="gray")
             # to view it correctly on video,
             # but wrong with respect to the matplotlib axes
-            plt.imshow(image.data[::-1,:,100].T, cmap="gray")
+            plt.imshow(image.data[:,::-1,int(image.data.shape[2]/2)].T, cmap="gray")
+            plt.connect('key_press_event', close_plot)
             plt.show()
+        if b:
+            mean_list.append(image.data.mean())
+            stdev_list.append(image.data.std())
+            percentile_05_list.append(numpy.percentile(image.data, 5))
+            percentile_95_list.append(numpy.percentile(image.data, 95))
+    if b:
+        fig, axs = plt.subplots(1, 2)
+        axs[0].scatter(mean_list, stdev_list)
+        axs[0].set_xlabel("mean")
+        axs[0].set_ylabel("stdev")
+        axs[1].scatter(percentile_05_list, percentile_95_list)
+        axs[1].set_xlabel("percentile_05")
+        axs[1].set_ylabel("percentile_95")
+        plt.show()
+
+    
+
+            
     quit()
