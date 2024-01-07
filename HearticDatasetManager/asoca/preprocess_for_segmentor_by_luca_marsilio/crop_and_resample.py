@@ -65,11 +65,11 @@ def preprocess_image_couple(subset: str, number: int):
     y_voxels_lims = [numpy.min(mask_indices[:, 1]), numpy.max(mask_indices[:, 1])]
     z_voxels_lims = [numpy.min(mask_indices[:, 2]), numpy.max(mask_indices[:, 2])]
     # - transform these voxels into mm in RAS coord system
-    x_mm_lims = [apply_affine_3d(image.affine_ijk2ras, numpy.array([x_, 0, 0]).T)[0] for x_ in x_voxels_lims]
+    x_mm_lims = [apply_affine_3d(image.affine_ijk2ras, numpy.array([x_, 0, 0]).T)[0,0] for x_ in x_voxels_lims]
     x_mm_lims.sort()
-    y_mm_lims = [apply_affine_3d(image.affine_ijk2ras, numpy.array([0, y_, 0]).T)[1] for y_ in y_voxels_lims]
+    y_mm_lims = [apply_affine_3d(image.affine_ijk2ras, numpy.array([0, y_, 0]).T)[1,0] for y_ in y_voxels_lims]
     y_mm_lims.sort()
-    z_mm_lims = [apply_affine_3d(image.affine_ijk2ras, numpy.array([0, 0, z_]).T)[2] for z_ in z_voxels_lims]
+    z_mm_lims = [apply_affine_3d(image.affine_ijk2ras, numpy.array([0, 0, z_]).T)[2,0] for z_ in z_voxels_lims]
     z_mm_lims.sort()
     # - decrease the minimums by 4*new spacing
     x_mm_lims[0] -= 4*_RESPACING_MM

@@ -9,7 +9,7 @@ from HearticDatasetManager.image.image import ImageCT
 
 
 class ImagecasImageCT(ImageCT):
-    """Class to load an ASOCA dataset image into the base image class.
+    """Class to load an ImageCAS dataset image into the base image class.
 
     This dataset does not originally have centerlines associated with it.
     """
@@ -44,7 +44,9 @@ class ImagecasImageCT(ImageCT):
         
     def _get_image_name(self, path: str) -> str:
         im_name = os.path.splitext(os.path.basename(path))[0]
-        im_name = os.path.splitext(im_name)[0]
+        im_name = os.path.splitext(
+            os.path.splitext(im_name)[0]
+        )[0]
         name = "ImageCAS/" + im_name
         return name
 
@@ -88,19 +90,91 @@ class ImagecasImageCT(ImageCT):
 
 
 class ImagecasLabelCT(ImageCT):
-    pass
+    """Class to load an ImageCAS dataset label image into the base image class.
+
+    This dataset does not originally have centerlines associated with it.
+    """
+
+    def __init__(self, path: str):
+        """Initialize the class.
+
+        Parameters
+        ----------
+            path (str): Path to the .nrrd image file (.nrrd has to be specified).
+        """
+        # path
+        path = self._clean_image_path(path) 
+        # name
+        name = self._get_image_name(path)
+        # ImageCT data
+        data, origin, spacing, affine_ijk2ras_direction = self._load_image(path)
+        super().__init__(name, data, origin, spacing, affine_ijk2ras_direction)
+    
+    def _clean_image_path(self, path: str) -> str:
+        """Clean the image path.
+        """
+        path = os.path.normpath(path).replace("\\", os.sep).replace("/", os.sep)
+        if os.path.isfile(path) and path.endswith(".label.nii.gz"):
+            return path
+        else:
+            if os.path.isfile(path) and path.endswith(".img.nii.gz"):
+                raise ValueError(f"The path is an image file, not a label file:\n{path}. Open it with the ImagecasImageCT class instead.")
+            else:
+                raise ValueError(f"The path is not a recognized .label.nii.gz file or it cannot be found:\n{path}")
+        
+    def _get_image_name(self, path: str) -> str:
+        im_name = os.path.splitext(os.path.basename(path))[0]
+        im_name = os.path.splitext(
+            os.path.splitext(im_name)[0]
+        )[0]
+        name = "ImageCAS/" + im_name
+        return name
+
+    def _load_image(self, path) -> None:
+        """Load the image into the class.
+        """
+        # Load the image
+        image = nibabel.load(path)
+        # Get the image array
+        image_array: numpy.ndarray = image.get_fdata().astype("bool").astype(numpy.uint8)
+        # - Data i,j,k correspond to y or A, x or R, z or S. 
+        #   -> no need to transpose, we just flip the dimension 0
+        image_array = numpy.flip(image_array, axis=0)
+        # Load the image header
+        image_header = image.header
+        # Get the image spacing
+        image_spacing = numpy.array(
+            [image_header["pixdim"][1], image_header["pixdim"][2], image_header["pixdim"][3]]
+            ).astype(numpy.float32).reshape((3,))
+        # Get the image origin
+        image_origin = numpy.array(
+            [image_header["qoffset_x"], image_header["qoffset_y"], image_header["qoffset_z"]]
+            ).astype(numpy.float32).reshape((3,))
+        # - since we flipped the R axis in the image array, we have to flip the origin
+        #   conceptually, I don't know why this formula works, but it does
+        image_origin[0] = -image_origin[0] + image_spacing[0]*image_array.shape[0]
+        # Get the image direction
+        affine_ijk2ras_direction = numpy.eye(4)
+        # transform origin according to ras orientation
+        # for this nifti dataset, we have to do like so
+        image_origin *= numpy.sign(
+            [image_header["srow_x"][0], image_header["srow_y"][1], image_header["srow_z"][2]]
+        )
+        # out
+        return (image_array, image_origin, image_spacing, affine_ijk2ras_direction)
 
 
-##########
-############
-###############       
-print("       \n     CHECK THE HOUNSFIELD UNITS, YOU DID NOT DO THAT YET")    
+
+
+
+
 
         
 if __name__ == "__main__":
     # Example usage
-    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\325.img.nii.gz"
-    image = ImagecasImageCT(image_path)
+    image_path = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\325"
+    image = ImagecasImageCT(image_path+".img.nii.gz")
+    label = ImagecasLabelCT(image_path+".label.nii.gz")
 
     import matplotlib.pyplot as plt
 
@@ -133,6 +207,10 @@ if __name__ == "__main__":
             points_to_sample.append([x, y, z_ras])
     points_to_sample = numpy.array(points_to_sample)
     samples = image.sample(points_to_sample.T, interpolation="linear")
+
+    # label
+    samples_label = label.sample(points_to_sample.T, interpolation="nearest")
+    samples_label = samples_label.astype("bool").astype("uint8")
     #print(samples)
     ax.scatter(
         points_to_sample[:,0],
@@ -141,6 +219,15 @@ if __name__ == "__main__":
         c=samples,
         cmap="gray",
         s=10,
+        linewidths=0.0,
+        antialiased=False
+    )
+    ax.scatter(
+        points_to_sample[samples_label!=0,0],
+        points_to_sample[samples_label!=0,1],
+        points_to_sample[samples_label!=0,2]+0.5,
+        c="yellow",
+        s=15,
         linewidths=0.0,
         antialiased=False
     )
@@ -203,8 +290,8 @@ if __name__ == "__main__":
         if not os.path.exists(im_path):
             continue
         image = ImagecasImageCT(im_path)
-        a = False
-        b = True
+        a = True
+        b = False
         if a:
             plt.hist(image.data.flatten(), bins=300)
             plt.title(os.path.basename(im_path))
@@ -220,6 +307,8 @@ if __name__ == "__main__":
             plt.connect('key_press_event', close_plot)
             plt.show()
         if b:
+            # If in the final scatterplots are not visible any clusters,
+            # but just one continuous cluster, then all images are scaled the same
             mean_list.append(image.data.mean())
             stdev_list.append(image.data.std())
             percentile_05_list.append(numpy.percentile(image.data, 5))
