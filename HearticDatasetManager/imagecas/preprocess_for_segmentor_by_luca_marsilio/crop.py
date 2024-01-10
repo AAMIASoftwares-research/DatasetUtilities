@@ -13,9 +13,9 @@ from ..image import ImagecasImageCT, ImagecasLabelCT
 from ..dataset import DATASET_IMAGECAS_IMAGES, DATASET_IMAGECAS_LABELS
 
 
-_IMAGECAS_DATA_FOLDER = "C:\\Users\\lecca\\Desktop\\ImageCAS\\Data\\"
+_IMAGECAS_DATA_FOLDER = "E:\\MatteoLeccardi\\HearticData\\ImageCAS\\Data\\"
 
-_SAVE_FOLDER = f"C:\\Users\\lecca\\Desktop\\ImageCAS_segmentor\\Data\\"
+_SAVE_FOLDER = f"E:\\MatteoLeccardi\\HearticData\\ImageCAS_segmentor\\Data\\"
 
 
 
@@ -116,7 +116,7 @@ def preprocess_image_couple(number: int):
 
 if __name__ == "__main__":
     t0 = time.time()
-    for i, file in enumerate(DATASET_IMAGECAS_IMAGES[:3]):
+    for i, file in enumerate(DATASET_IMAGECAS_IMAGES):
         num = int(file.split(".")[0])
         print(f"Working on {num} ({100*i/len(DATASET_IMAGECAS_IMAGES):.2f}%)")
         preprocess_image_couple(num)

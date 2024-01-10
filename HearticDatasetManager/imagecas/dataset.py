@@ -1925,6 +1925,10 @@ DATASET_IMAGECAS_LABELS = [
 	"990.label.nii.gz"
 ]
 
+if __name__ == '__main__':
+    # get the lenght of the two lists
+    print("DATASET_IMAGECAS_IMAGES:", len(DATASET_IMAGECAS_IMAGES))
+    print("DATASET_IMAGECAS_LABELS:", len(DATASET_IMAGECAS_LABELS))
 
 if __name__ == '__main__':
     # used this module to discover all the images
