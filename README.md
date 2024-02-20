@@ -16,6 +16,12 @@ Installation guide soon available.
 
 ## Usage
 
+To install the package, use the following command:
+
+```sh
+pip install git+https://github.com/AAMIASoftwares-research/DatasetUtilities.git
+```
+
 To import the package, use the following command:
 
 ```py
