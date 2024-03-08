@@ -61,3 +61,15 @@ DATASET_CAT08_GRAPHS = [os.path.normpath(n) for n in DATASET_CAT08_GRAPHS]
 DATASET_CAT08_GRAPHS_RESAMPLED_05MM = [
     n.replace(".GML", "_0.5mm.GML") if n.find("_0.5mm.GML") == -1 else n for n in DATASET_CAT08_GRAPHS
 ]
+
+DATASET_CAT08_GRAPHS_RESAMPLED_05MM_INTERSECTIONS_30DEG = [
+    n.replace(".GML", "_intersections_30deg.GML") if n.find("_intersections_30deg.GML") == -1 else n for n in DATASET_CAT08_GRAPHS_RESAMPLED_05MM
+]
+
+DATASET_CAT08_GRAPHS_RESAMPLED_05MM_INTERSECTIONS_35DEG = [
+    n.replace(".GML", "_intersections_35deg.GML") if n.find("_intersections_35deg.GML") == -1 else n for n in DATASET_CAT08_GRAPHS_RESAMPLED_05MM
+]
+
+DATASET_CAT08_GRAPHS_RESAMPLED_05MM_INTERSECTIONS_40DEG = [
+    n.replace(".GML", "_intersections_40deg.GML") if n.find("_intersections_40deg.GML") == -1 else n for n in DATASET_CAT08_GRAPHS_RESAMPLED_05MM
+]
