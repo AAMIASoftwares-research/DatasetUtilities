@@ -44,10 +44,9 @@ def make_wall_lumen_label(image_file_path, label_file_path, save_path, lumen_thr
     # this is to prevent holes in the lumen label
     where = numpy.argwhere(new_label.data == wall_label)
     for x, y, z in where:
-        if (wall_label not in new_label.data[x-1:x+2, y-1, z]) and\
-        (wall_label not in new_label.data[x-1:x+2, y+1, z]) and\
-        (wall_label not in new_label.data[x-1, y, z]) and\
-        (wall_label not in new_label.data[x+1, y, z]):
+        square_ = new_label.data[x-1:x+2, y-1:y+2, z].copy()
+        square_[1, 1] = 100
+        if wall_label not in square_:
             new_label.data[x, y, z] = lumen_label
     # return or save with nibabel to nii.gz
     if save_path == "":
