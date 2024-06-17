@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name         = "HearticDatasetManager"
-version      = "2024.06.06-00"
+version      = "2024.06.17-00"
 description      = "Still under dev - do not use without permission of matteo.leccardi@polimi.it"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
@@ -22,8 +22,9 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
-    "matplotlib",
+    "scipy",
     "scikit-learn",
+    "matplotlib",
     "vtk",
     "nibabel",
     "SimpleITK",

@@ -7,6 +7,7 @@ images and their metadata.
 import os, copy
 from collections import UserDict
 import numpy
+import scipy.ndimage
 
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
@@ -286,8 +287,10 @@ class ImageCT(object):
         return ras_coords
 
 
-    def sample(self, location: numpy.ndarray, interpolation: str = "nearest") -> numpy.ndarray:
-        """Sample the image data at specific 3D location(s) expressed in the RAS space.
+    def _sample_legacy(self, location: numpy.ndarray, interpolation: str = "nearest") -> numpy.ndarray:
+        """ OLD FUNCTION - I'm keeping it just because it is a good example of how to do it without scipy.
+        
+        Sample the image data at specific 3D location(s) expressed in the RAS space.
 
         Interpolation is applied to the image data to get the value at the
         specified location(s), if specified. "nearest" is the default and
@@ -397,6 +400,61 @@ class ImageCT(object):
         if output.shape[0] == 1:
             return output[0]
         return output
+    
+    def sample(self, location: numpy.ndarray, interpolation: str = "nearest") -> numpy.ndarray:
+        """Sample the image data at specific 3D location(s) expressed in the RAS space.
+
+        Interpolation is applied to the image data to get the value at the
+        specified location(s), if specified. "nearest" is the default and
+        applies no interpolation.
+
+        Parameters
+        ----------
+        location : numpy.ndarray
+            The 3D location(s) to sample the image data.
+            The location(s) must be in RAS coordinates (x,y,z), millimeters.
+            location.shape = (3,) or (3, N) where N is the number of locations.
+        interpolation : str, optional
+            The interpolation method to use, the order of the splice interpolation.
+            Default is "nearest".
+            Available methods are:
+            - "nearest" : Nearest neighbor interpolation. (degree 0, fast)
+            - "linear" : Linear interpolation. (degree 1, fast) : recommended
+            - 2 : Degree 2 spline. (degree 2, slow)
+            - 3 : Degree 3 spline. (degree 3, slow)
+            - 4 : Degree 4 spline. (degree 4, slow)
+            - 5 : Degree 5 spline. (degree 5, slow)
+        """
+        # Input rejection
+        if location.ndim > 2:
+            raise ValueError(f"Data must be a 2D array or a (x,y,z) array. Got {location.ndim}D array.")
+        if len(location.shape) == 1:
+            location = location.reshape(location.shape[0],1)
+        if location.shape[0] != 3:
+            raise ValueError(f"Data must have 3 rows. Got {location.shape[0]} rows.")
+        if not interpolation in ["nearest", "linear"]:
+            raise ValueError(f"Interpolation method {interpolation} not available. Available methods are: nearest, linear.")
+        # Transform location to IJK, keeping the decimals
+        location = apply_affine_3d(self.affine_ras2ijk, location)
+        if interpolation == "nearest":
+            order = 0
+        elif interpolation == "linear":
+            order = 1
+        else:
+            if isinstance(interpolation, int):
+                order = interpolation
+        output = scipy.ndimage.map_coordinates(
+            self.data,
+            location,
+            order=order,
+            mode="nearest",
+            cval=numpy.min(self.data),
+            prefilter=True
+        )
+        # Out
+        if output.shape[0] == 1:
+            return output[0]
+        return output
 
 
     def __repr__(self):
@@ -414,11 +472,56 @@ class ImageSequenceCT(object):
 
 
 if __name__ == "__main__":
+    import time
+    import matplotlib.pyplot as plt
     # Test image sampling
     FOLDER = "E:\\MatteoLeccardi\\HearticData\\ASOCA\\"
     from ..asoca import DATASET_ASOCA_IMAGES_DICT
     from ..asoca import AsocaImageCT
+
+    # interpolation test
+    f = os.path.join(
+        FOLDER,
+        DATASET_ASOCA_IMAGES_DICT["Normal"][1]
+    )
+    image = AsocaImageCT(f)
+    xl, xh = image.bounding_box.get_xlim()
+    yl, yh = image.bounding_box.get_ylim()
+    zl, zh = image.bounding_box.get_zlim()
+    x = numpy.linspace(xl, xh, 600)
+    y = numpy.linspace(yl, yh, 600)
+    z = numpy.mean([zl, zh])
+    # make a square grid
+    x, y = numpy.meshgrid(x, y)
+    points = numpy.vstack((x.flatten(), y.flatten(), z*numpy.ones(x.size))).T
+    figure = plt.figure()
+    # old interpolation
+    ax1 = figure.add_subplot(121, projection="3d")
+    ax1.add_artist(image.bounding_box.get_artist())
+    t0 = time.time()
+    c = image._sample_legacy(points.T, interpolation="linear")
+    t1 = time.time()
+    ax1.scatter(points[:,0], points[:,1], points[:,2], s=1, c=c, cmap="gray")
+    ax1.set(
+        title=f"Old interpolation ({t1-t0:.3f}s)", 
+        xlim=(xl, xh), ylim=(yl, yh), zlim=(zl, zh))
+
+    ax2 = figure.add_subplot(122, projection="3d")
+    ax2.add_artist(image.bounding_box.get_artist())
+    t0 = time.time()
+    c = image.sample(points.T)
+    t1 = time.time()
+    ax2.scatter(points[:,0], points[:,1], points[:,2], s=1, c=c, cmap="gray")
+    ax2.set(
+        title=f"New interpolation ({t1-t0:.3f}s)",
+        xlim=(xl, xh), ylim=(yl, yh), zlim=(zl, zh)
+    )
     
+
+    plt.show()
+    quit()
+
+    # iterative test
     for t_ in ["Normal", "Diseased"]:
         for n_im_ in range(1, 21):
             print(t_, n_im_, "\n")
@@ -436,7 +539,6 @@ if __name__ == "__main__":
 
             points = 2*numpy.random.rand(5000, 3)-1.0 + numpy.array([xl, yl, zh])
 
-            import matplotlib.pyplot as plt
             """ """
             fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
             ax.add_artist(image.bounding_box.get_artist())
