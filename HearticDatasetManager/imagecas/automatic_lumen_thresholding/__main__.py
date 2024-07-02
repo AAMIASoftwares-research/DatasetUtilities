@@ -48,7 +48,7 @@ if __name__ == "__main__" and 0:
 
 from .functions_for_multiprocessing import make_wall_lumen_label
 
-LUMEN_THRESH = 150
+LUMEN_THRESH = 200
 
 # test
 if __name__ == "__main__" and 0:

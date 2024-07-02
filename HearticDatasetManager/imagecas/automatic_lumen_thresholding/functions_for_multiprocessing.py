@@ -28,7 +28,7 @@ def make_wall_lumen_label(image_file_path, label_file_path, save_path, lumen_thr
     # in the slice
     where = numpy.argwhere(new_label.data == lumen_label)
     for x, y, z in where:
-        if null_label in new_label.data[x-1:x+2, y-1:y+2, z]:
+        if null_label in new_label.data[x-1:x+2, y-1:y+2, z-1:z+2]:
             new_label.data[x, y, z] = wall_label
     # intensity-based erosion of the wall label
     # only in the locations where the previously found lumen is
@@ -36,18 +36,22 @@ def make_wall_lumen_label(image_file_path, label_file_path, save_path, lumen_thr
     # the lumen label is reset to be all just wall label
     where = numpy.argwhere(new_label.data == lumen_label)
     new_label.data = new_label.data.astype(bool).astype(int)
-    for x, y, z in where:
-        if image.data[x, y, z] >= lumen_thresh:
-            new_label.data[x, y, z] = lumen_label
-    # if a wessel wall pixel is surrounded, on the slice, 
+    new_label.data[where[:, 0], where[:, 1], where[:, 2]] = numpy.where(
+        image.data[where[:, 0], where[:, 1], where[:, 2]] >= lumen_thresh,
+        lumen_label, 
+        new_label.data[where[:, 0], where[:, 1], where[:, 2]]
+    )
+    # if a vessel wall pixel is surrounded, on the slice, 
     # by lumen pixels, it is a lumen pixel
     # this is to prevent holes in the lumen label
-    where = numpy.argwhere(new_label.data == wall_label)
-    for x, y, z in where:
-        square_ = new_label.data[x-1:x+2, y-1:y+2, z].copy()
-        square_[1, 1] = 100
-        if wall_label not in square_:
-            new_label.data[x, y, z] = lumen_label
+    for _ in range(3):
+        # XY plane
+        where = numpy.argwhere(new_label.data == wall_label)
+        for x, y, z in where:
+            square_ = new_label.data[x-1:x+2, y-1:y+2, z].copy()
+            square_[1, 1] = 100
+            if wall_label not in square_:
+                new_label.data[x, y, z] = lumen_label
     # return or save with nibabel to nii.gz
     if save_path == "":
         return new_label
