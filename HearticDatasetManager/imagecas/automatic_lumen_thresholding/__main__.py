@@ -90,7 +90,7 @@ if __name__ == "__main__" and 0:
 if __name__ == "__main__" and 1:
     import time
     t0_ = time.time()
-    N_CPU = multiprocessing.cpu_count()
+    N_CPU = max(multiprocessing.cpu_count() - 2, 1)
     input_list = [
         (
             BASE_FOLDER + DATA_FOLDER + im_, 
