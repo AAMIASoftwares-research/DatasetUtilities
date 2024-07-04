@@ -48,7 +48,7 @@ if __name__ == "__main__" and 0:
 
 from .functions_for_multiprocessing import make_wall_lumen_label
 
-LUMEN_THRESH = 200
+LUMEN_THRESH = 100
 
 # test
 if __name__ == "__main__" and 0:
@@ -90,7 +90,7 @@ if __name__ == "__main__" and 0:
 if __name__ == "__main__" and 1:
     import time
     t0_ = time.time()
-    N_CPU = max(multiprocessing.cpu_count() - 2, 1)
+    N_CPU = max(multiprocessing.cpu_count() - 1, 1)
     input_list = [
         (
             BASE_FOLDER + DATA_FOLDER + im_, 
