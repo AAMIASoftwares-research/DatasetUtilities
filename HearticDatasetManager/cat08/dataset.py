@@ -73,3 +73,7 @@ DATASET_CAT08_GRAPHS_RESAMPLED_05MM_INTERSECTIONS_35DEG = [
 DATASET_CAT08_GRAPHS_RESAMPLED_05MM_INTERSECTIONS_40DEG = [
     n.replace(".GML", "_intersections_40deg.GML") if n.find("_intersections_40deg.GML") == -1 else n for n in DATASET_CAT08_GRAPHS_RESAMPLED_05MM
 ]
+
+DATASET_CAT08_GRAPHS_RESAMPLED_05MM_INTERSECTIONS_60DEG = [
+    n.replace(".GML", "_intersections_60deg.GML") if n.find("_intersections_60deg.GML") == -1 else n for n in DATASET_CAT08_GRAPHS_RESAMPLED_05MM
+]
