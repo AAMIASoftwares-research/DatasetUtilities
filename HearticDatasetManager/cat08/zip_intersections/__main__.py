@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import networkx
 import hcatnetwork
 
-from ..dataset import DATASET_CAT08_GRAPHS
+from ..dataset import DATASET_CAT08_GRAPHS_RESAMPLED_05MM
 
 MIN_INTERSECTION_ANGLE_DEG = 60 # degrees
 SAVE_FIXED_GRAPHS = True
@@ -27,7 +27,7 @@ CAT08_GRAPHS_DIR = os.path.normpath(CAT08_GRAPHS_DIR)
 
 def main():
     print("Zipping up all ASOCA graphs. 30 degrees.")
-    graphs_files = [os.path.join(CAT08_GRAPHS_DIR, n) for n in DATASET_CAT08_GRAPHS]
+    graphs_files = [os.path.join(CAT08_GRAPHS_DIR, n) for n in DATASET_CAT08_GRAPHS_RESAMPLED_05MM]
     graphs = []
     for graph_file in graphs_files:
         print("Loading graph:", graph_file)
@@ -185,7 +185,7 @@ def main():
                 position = numpy.array([graph.nodes[n]["x"], graph.nodes[n]["y"], graph.nodes[n]["z"]])
                 print(f"Node {n} has been fixed (graph {graph.graph['image_id']}), position {position}.")
         # Final resample (it is already sampled at 0.5 mm between nodes, but we want to resample due to the new nodes added)
-        new_graph = graph.resample(mm_between_nodes=0.5, update_image_id=True)
+        new_graph = graph.resample(mm_between_nodes=0.5, update_image_id=False)
         # Rename graph
         old_name = new_graph.graph["image_id"]
         new_name = old_name + f", intersections {int(MIN_INTERSECTION_ANGLE_DEG)}deg"
@@ -196,7 +196,7 @@ def main():
     # Save fixed graphs - same folder where the original graphs are
     if SAVE_FIXED_GRAPHS:
         for i_, graph in enumerate(fixed_graphs):
-            old_graph_name = DATASET_CAT08_GRAPHS[i_]
+            old_graph_name = DATASET_CAT08_GRAPHS_RESAMPLED_05MM[i_]
             if not "mm" in old_graph_name:
                 # original graph was not resampled - insert it in the name
                 old_graph_name = old_graph_name.replace(".GML", "_0.5mm.GML")

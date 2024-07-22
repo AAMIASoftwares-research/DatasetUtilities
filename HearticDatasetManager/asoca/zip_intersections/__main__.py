@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import networkx
 import hcatnetwork
 
-from ..dataset import DATASET_ASOCA_GRAPHS
+from ..dataset import DATASET_ASOCA_GRAPHS_RESAMPLED_05MM
 
 MIN_INTERSECTION_ANGLE_DEG = 60 # degrees
 SAVE_FIXED_GRAPHS = True
@@ -27,7 +27,7 @@ ASOCA_GRAPHS_DIR = os.path.normpath(ASOCA_GRAPHS_DIR)
 
 def main():
     print(f"Zipping up all ASOCA graphs. {MIN_INTERSECTION_ANGLE_DEG} degrees.")
-    graphs_files = [os.path.join(ASOCA_GRAPHS_DIR, n) for n in DATASET_ASOCA_GRAPHS]
+    graphs_files = [os.path.join(ASOCA_GRAPHS_DIR, n) for n in DATASET_ASOCA_GRAPHS_RESAMPLED_05MM]
     graphs = []
     for graph_file in graphs_files:
         print("Loading graph:", graph_file)
@@ -187,7 +187,7 @@ def main():
         # Final resample
         # We start from the original graph, resample it at 0.5 mm between each node
         # after the zipping
-        new_graph = graph.resample(mm_between_nodes=0.5, update_image_id=True)
+        new_graph = graph.resample(mm_between_nodes=0.5, update_image_id=False)
         # Rename graph
         old_name = new_graph.graph["image_id"]
         new_name = old_name + f", intersections {int(MIN_INTERSECTION_ANGLE_DEG)}deg"
@@ -198,7 +198,7 @@ def main():
     # Save fixed graphs - same folder where the original graphs are
     if SAVE_FIXED_GRAPHS:
         for i_, graph in enumerate(fixed_graphs):
-            old_graph_name = DATASET_ASOCA_GRAPHS[i_]
+            old_graph_name = DATASET_ASOCA_GRAPHS_RESAMPLED_05MM[i_]
             if not "mm" in old_graph_name:
                 # original graph was not resampled - insert it in the name
                 old_graph_name = old_graph_name.replace(".GML", "_0.5mm.GML")
