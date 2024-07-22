@@ -4,7 +4,7 @@
 # To find the actual intersection, we will use an aprioristic rule:
 #     when the angle between the two direction vectors
 #     pointing from the intersection point towards the
-#     next two points is less than 30 degrees, we will
+#     next two points is less than N degrees, we will
 #     move the intersection further up the line.
 # This will also rename the graph appending "intersections" to the filename and "fixed intersections 30 deg" to the
 # graph name.
@@ -17,17 +17,17 @@ import matplotlib.pyplot as plt
 import networkx
 import hcatnetwork
 
-from ..dataset import DATASET_ASOCA_GRAPHS_RESAMPLED_05MM
+from ..dataset import DATASET_ASOCA_GRAPHS
 
-MIN_INTERSECTION_ANGLE_DEG = 40 # degrees (30, 35, 40)
+MIN_INTERSECTION_ANGLE_DEG = 60 # degrees
 SAVE_FIXED_GRAPHS = True
 
-ASOCA_GRAPHS_DIR = "C:\\Users\\lecca\\Desktop\\AAMIASoftwares-research\\Data\\ASOCA\\"
+ASOCA_GRAPHS_DIR = "E:\\MatteoLeccardi\\HearticData\\ASOCA\\"
 ASOCA_GRAPHS_DIR = os.path.normpath(ASOCA_GRAPHS_DIR)
 
 def main():
-    print("Zipping up all ASOCA graphs. 30 degrees.")
-    graphs_files = [os.path.join(ASOCA_GRAPHS_DIR, n) for n in DATASET_ASOCA_GRAPHS_RESAMPLED_05MM]
+    print(f"Zipping up all ASOCA graphs. {MIN_INTERSECTION_ANGLE_DEG} degrees.")
+    graphs_files = [os.path.join(ASOCA_GRAPHS_DIR, n) for n in DATASET_ASOCA_GRAPHS]
     graphs = []
     for graph_file in graphs_files:
         print("Loading graph:", graph_file)
@@ -37,13 +37,14 @@ def main():
     # process
     time_ = time.time()
     for graph in graphs:
+        print(f"Processing graph {graph.graph['image_id']} ...")
         # First, fix all endpoints that may have been not classified as such
         for n in graph.nodes():
             if (graph.degree(n) == 1) and (graph.nodes[n]["topology"] != hcatnetwork.node.ArteryNodeTopology.OSTIUM):
                 graph.nodes[n]["topology"] = hcatnetwork.node.ArteryNodeTopology.ENDPOINT
         # find and list all intersection nodes
         intersections = [n for n in graph.nodes() if graph.degree(n) > 2]
-        intersections_ostia = [graph.get_relative_coronary_ostia_node_id(n)[0] for n in intersections]
+        intersections_ostia = [graph.get_coronary_ostia_node_id(n)[0] for n in intersections]
         intersections_distances_from_ostium = [networkx.dijkstra_path_length(graph, i, o) for i, o in zip(intersections,intersections_ostia)]
         intersections_order_of_management = numpy.argsort(intersections_distances_from_ostium)
         # process intersections
@@ -183,11 +184,13 @@ def main():
                 graph.nodes[n]["topology"] = hcatnetwork.node.ArteryNodeTopology.SEGMENT
                 position = numpy.array([graph.nodes[n]["x"], graph.nodes[n]["y"], graph.nodes[n]["z"]])
                 print(f"Node {n} has been fixed (graph {graph.graph['image_id']}), position {position}.")
-        # Final resample (it is already sampled at 0.5 mm between nodes, but we want to resample due to the new nodes added)
-        new_graph = graph.resample(mm_between_nodes=0.5, update_image_id=False)
+        # Final resample
+        # We start from the original graph, resample it at 0.5 mm between each node
+        # after the zipping
+        new_graph = graph.resample(mm_between_nodes=0.5, update_image_id=True)
         # Rename graph
         old_name = new_graph.graph["image_id"]
-        new_name = old_name + f", intersections {int(MIN_INTERSECTION_ANGLE_DEG)}°"
+        new_name = old_name + f", intersections {int(MIN_INTERSECTION_ANGLE_DEG)}deg"
         new_graph.graph["image_id"] = new_name
         # Save graph
         fixed_graphs.append(new_graph)
@@ -195,7 +198,10 @@ def main():
     # Save fixed graphs - same folder where the original graphs are
     if SAVE_FIXED_GRAPHS:
         for i_, graph in enumerate(fixed_graphs):
-            old_graph_name = DATASET_ASOCA_GRAPHS_RESAMPLED_05MM[i_]
+            old_graph_name = DATASET_ASOCA_GRAPHS[i_]
+            if not "mm" in old_graph_name:
+                # original graph was not resampled - insert it in the name
+                old_graph_name = old_graph_name.replace(".GML", "_0.5mm.GML")
             new_graph_name = old_graph_name.replace(".GML", f"_intersections_{int(MIN_INTERSECTION_ANGLE_DEG)}deg.GML")
             graph_file = os.path.join(ASOCA_GRAPHS_DIR, new_graph_name)
             print("Saving graph: ", graph_file)
