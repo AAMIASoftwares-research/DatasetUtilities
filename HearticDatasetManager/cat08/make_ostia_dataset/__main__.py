@@ -126,6 +126,7 @@ def cat08_get_ostia_all_patients(path_to_cat08_folder: str, affine_centerlines2r
 
 if __name__ == '__main__':
     print("CAT08 dataset ostia extraction")
+    
     cat08_folder = r"/scratch/mleccardi/Data/CAT08/"
     cat08_image_files = [os.path.join(cat08_folder, f) for f in DATASET_CAT08_IMAGES]
     cat08_images = [
@@ -138,7 +139,6 @@ if __name__ == '__main__':
         [img.affine_centerlines2ras for img in cat08_images],
         [img.affine_ras2ijk for img in cat08_images]
     )
-
 
     if 0:
         # show the image and the ostia point overlapped
