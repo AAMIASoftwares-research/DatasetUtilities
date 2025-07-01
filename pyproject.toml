@@ -28,6 +28,7 @@ dependencies = [
     "vtk",
     "nibabel",
     "SimpleITK",
+    "pynrrd",
     "hcatnetwork @ git+https://github.com/AAMIASoftwares-research/HCATNetwork.git@main"
 ]
 
